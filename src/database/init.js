@@ -100,7 +100,7 @@ async function initializeDatabase() {
         )
     `);
 
-    // Create tables
+    // Create user_profiles table (without region column)
     db.run(`
         CREATE TABLE IF NOT EXISTS user_profiles (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -121,14 +121,15 @@ async function initializeDatabase() {
         )
     `);
 
+    // Create family_members table with encrypted fields
     db.run(`
         CREATE TABLE IF NOT EXISTS family_members (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
             relationship TEXT NOT NULL CHECK(relationship IN ('spouse', 'child')),
-            first_name TEXT NOT NULL,
-            last_name TEXT NOT NULL,
-            date_of_birth TEXT,
+            first_name_encrypted TEXT NOT NULL,
+            last_name_encrypted TEXT NOT NULL,
+            date_of_birth TEXT NOT NULL,
             has_preexisting_conditions INTEGER NOT NULL DEFAULT 0 CHECK(has_preexisting_conditions IN (0, 1)),
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -215,18 +216,18 @@ async function initializeDatabase() {
         ]);
     }
     
-    // Insert family members
+    // Insert family members with encrypted fields
     for (const member of dummyFamilyMembers) {
         const userId = member.userIndex + 1; // Convert index to user ID
         
         db.run(`
-            INSERT INTO family_members (user_id, relationship, first_name, last_name, date_of_birth, has_preexisting_conditions)
+            INSERT INTO family_members (user_id, relationship, first_name_encrypted, last_name_encrypted, date_of_birth, has_preexisting_conditions)
             VALUES (?, ?, ?, ?, ?, ?)
         `, [
             userId,
             member.relationship,
-            member.firstName,
-            member.lastName,
+            encrypt(member.firstName),
+            encrypt(member.lastName),
             member.dateOfBirth,
             member.hasPreexistingConditions
         ]);

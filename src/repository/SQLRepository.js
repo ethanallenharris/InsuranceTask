@@ -485,29 +485,6 @@ class SQLRepository {
             });
         });
     }
-
-    /**
-     * Check if a region is valid
-     * @param {string} region
-     * @returns {boolean}
-     */
-    isValidRegion(region) {
-        const stmt = this.db.prepare('SELECT 1 FROM valid_regions WHERE region = ?');
-        stmt.bind([region]);
-        const exists = stmt.step();
-        stmt.free();
-        return exists;
-    }
-
-    /**
-     * Get all valid regions
-     * @returns {string[]}
-     */
-    getValidRegions() {
-        const results = this.db.exec('SELECT region FROM valid_regions ORDER BY region');
-        if (results.length === 0) return [];
-        return results[0].values.map(row => row[0]);
-    }
 }
 
 module.exports = SQLRepository;
