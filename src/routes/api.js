@@ -25,6 +25,28 @@ function getRepository() {
 }
 
 /**
+ * Check if email already exists
+ */
+router.post('/check-email', (req, res) => {
+    try {
+        const repo = getRepository();
+        const { email } = req.body;
+        
+        if (!email || typeof email !== 'string') {
+            return res.status(400).json({ error: 'Email is required' });
+        }
+        
+        const sanitizedEmail = email.toLowerCase().trim();
+        const exists = repo.emailExists(sanitizedEmail);
+        
+        res.json({ exists });
+    } catch (error) {
+        console.error('Error checking email:', error);
+        res.status(500).json({ error: 'An error occurred checking the email' });
+    }
+});
+
+/**
  * Get questionnaire questions
  */
 router.get('/questions', (req, res) => {
