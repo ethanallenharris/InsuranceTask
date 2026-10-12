@@ -148,12 +148,6 @@
     </div>
 
     <script>
-        // Mock credentials for testing
-        const MOCK_CREDENTIALS = {
-            email: 'admin@example.com',
-            password: 'admin123'
-        };
-
         const loginForm = document.getElementById('loginForm');
         const errorMessage = document.getElementById('errorMessage');
         const signInButton = document.getElementById('signInButton');
@@ -175,20 +169,12 @@
             // Simulate network delay
             await new Promise(resolve => setTimeout(resolve, 500));
 
-            // Mock authentication check
-            if (email === MOCK_CREDENTIALS.email && password === MOCK_CREDENTIALS.password) {
-                // Store mock session token
-                sessionStorage.setItem('adminAuthenticated', 'true');
-                sessionStorage.setItem('adminEmail', email);
-                
-                // Redirect to dashboard
-                window.location.href = '/admin/dashboard';
-            } else {
-                errorMessage.textContent = 'Invalid email or password. Please try again.';
-                errorMessage.classList.add('visible');
-                signInButton.disabled = false;
-                signInButton.textContent = 'Sign In';
-            }
+            // Mock authentication - accept any credentials
+            sessionStorage.setItem('adminAuthenticated', 'true');
+            sessionStorage.setItem('adminEmail', email);
+            
+            // Redirect to dashboard
+            window.location.href = '/admin/dashboard';
         });
     </script>
 </body>
