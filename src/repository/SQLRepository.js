@@ -22,18 +22,20 @@ class SQLRepository {
         const stmt = this.db.prepare(`
             INSERT INTO users (
                 first_name_encrypted, last_name_encrypted, 
-                email_encrypted, email_hash, postcode_encrypted
-            ) VALUES (?, ?, ?, ?, ?)
+                email_encrypted, email_hash, postcode_encrypted, status
+            ) VALUES (?, ?, ?, ?, ?, ?)
         `);
 
         const emailHash = hashEmail(user.email);
+        const status = user.status || User.getDefaultStatus();
 
         stmt.run([
             encrypt(user.firstName),
             encrypt(user.lastName),
             encrypt(user.email),
             emailHash,
-            encrypt(user.postcode)
+            encrypt(user.postcode),
+            status
         ]);
 
         stmt.free();
@@ -72,7 +74,8 @@ class SQLRepository {
             firstName: decrypt(row.first_name_encrypted),
             lastName: decrypt(row.last_name_encrypted),
             email: decrypt(row.email_encrypted),
-            postcode: decrypt(row.postcode_encrypted)
+            postcode: decrypt(row.postcode_encrypted),
+            status: row.status
         });
     }
 
@@ -113,7 +116,70 @@ class SQLRepository {
             firstName: decrypt(row.first_name_encrypted),
             lastName: decrypt(row.last_name_encrypted),
             email: decrypt(row.email_encrypted),
-            postcode: decrypt(row.postcode_encrypted)
+            postcode: decrypt(row.postcode_encrypted),
+            status: row.status
+        });
+    }
+
+    /**
+     * Update a user's status
+     * @param {number} userId
+     * @param {string} status - One of: 'accepted', 'rejected', 'referred'
+     * @returns {boolean} True if update was successful
+     */
+    updateUserStatus(userId, status) {
+        if (!User.isValidStatus(status)) {
+            throw new Error(`Invalid status: ${status}. Must be one of: ${User.getValidStatuses().join(', ')}`);
+        }
+
+        const stmt = this.db.prepare(`
+            UPDATE users 
+            SET status = ?, updated_at = CURRENT_TIMESTAMP 
+            WHERE id = ?
+        `);
+        stmt.run([status, userId]);
+        stmt.free();
+
+        const changes = this.db.getRowsModified();
+        
+        if (changes > 0) {
+            saveDatabase();
+        }
+        
+        return changes > 0;
+    }
+
+    /**
+     * Get users by status
+     * @param {string} status - One of: 'accepted', 'rejected', 'referred'
+     * @returns {User[]}
+     */
+    getUsersByStatus(status) {
+        if (!User.isValidStatus(status)) {
+            throw new Error(`Invalid status: ${status}. Must be one of: ${User.getValidStatuses().join(', ')}`);
+        }
+
+        const results = this.db.exec(`SELECT * FROM users WHERE status = ? ORDER BY created_at DESC`, [status]);
+        
+        if (results.length === 0) return [];
+
+        const columns = results[0].columns;
+        const rows = results[0].values;
+
+        return rows.map(row => {
+            const obj = {};
+            columns.forEach((col, i) => {
+                obj[col] = row[i];
+            });
+
+            return new User({
+                id: obj.id,
+                firstName: decrypt(obj.first_name_encrypted),
+                lastName: decrypt(obj.last_name_encrypted),
+                email: decrypt(obj.email_encrypted),
+                postcode: decrypt(obj.postcode_encrypted),
+                status: obj.status
+            });
         });
     }
 

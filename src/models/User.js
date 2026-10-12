@@ -1,4 +1,10 @@
 /**
+ * Valid user statuses
+ */
+const USER_STATUSES = ['accepted', 'rejected', 'referred'];
+const DEFAULT_STATUS = 'referred';
+
+/**
  * Represents a registered user with encrypted personal details.
  */
 class User {
@@ -9,6 +15,7 @@ class User {
      * @param {string} data.lastName
      * @param {string} data.email
      * @param {string} data.postcode
+     * @param {string} data.status - One of: 'accepted', 'rejected', 'referred'
      */
     constructor(data = {}) {
         this.id = data.id || null;
@@ -16,6 +23,7 @@ class User {
         this.lastName = data.lastName || null;
         this.email = data.email || null;
         this.postcode = data.postcode || null;
+        this.status = data.status || DEFAULT_STATUS;
     }
 
     toDict() {
@@ -24,7 +32,8 @@ class User {
             firstName: this.firstName,
             lastName: this.lastName,
             email: this.email,
-            postcode: this.postcode
+            postcode: this.postcode,
+            status: this.status
         };
     }
 
@@ -36,7 +45,8 @@ class User {
             id: this.id,
             firstName: this.firstName,
             // Mask email: show first 2 chars and domain
-            email: this.email ? this.maskEmail(this.email) : null
+            email: this.email ? this.maskEmail(this.email) : null,
+            status: this.status
         };
     }
 
@@ -53,6 +63,31 @@ class User {
 
     static fromDict(data) {
         return new User(data);
+    }
+
+    /**
+     * Check if a status value is valid
+     * @param {string} status
+     * @returns {boolean}
+     */
+    static isValidStatus(status) {
+        return USER_STATUSES.includes(status);
+    }
+
+    /**
+     * Get all valid statuses
+     * @returns {string[]}
+     */
+    static getValidStatuses() {
+        return [...USER_STATUSES];
+    }
+
+    /**
+     * Get the default status
+     * @returns {string}
+     */
+    static getDefaultStatus() {
+        return DEFAULT_STATUS;
     }
 }
 

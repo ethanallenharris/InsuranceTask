@@ -26,6 +26,7 @@ async function initializeDatabase() {
             email_encrypted TEXT NOT NULL,
             email_hash TEXT NOT NULL UNIQUE,
             postcode_encrypted TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'referred' CHECK(status IN ('accepted', 'rejected', 'referred')),
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
@@ -101,6 +102,7 @@ async function initializeDatabase() {
 
     // Create indexes
     db.run('CREATE INDEX IF NOT EXISTS idx_users_email_hash ON users(email_hash)');
+    db.run('CREATE INDEX IF NOT EXISTS idx_users_status ON users(status)');
     db.run('CREATE INDEX IF NOT EXISTS idx_profiles_user ON user_profiles(user_id)');
     db.run('CREATE INDEX IF NOT EXISTS idx_profiles_region ON user_profiles(region)');
     db.run('CREATE INDEX IF NOT EXISTS idx_profiles_age ON user_profiles(age)');
