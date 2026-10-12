@@ -44,11 +44,13 @@ async function startServer() {
     
     // Now load routes (after database is ready)
     const apiRoutes = require('./routes/api');
+    const adminRoutes = require('./routes/admin');
 
     app.use(express.json());
     app.use(express.static(path.join(__dirname, 'public')));
 
     app.use('/api', apiRoutes);
+    app.use('/admin', adminRoutes);
 
     app.get('/', (req, res) => {
         res.sendFile(path.join(__dirname, 'public', 'index.html'));
