@@ -8,11 +8,6 @@ let auditLog = [];
 // Valid options
 const VALID_STATUSES = ['accepted', 'rejected', 'referred'];
 const VALID_EMPLOYMENT_STATUSES = ['Employed', 'Self-employed', 'Unemployed', 'Retired', 'Student'];
-const VALID_REGIONS = [
-    'London', 'South East', 'South West', 'East of England',
-    'West Midlands', 'East Midlands', 'Yorkshire and the Humber',
-    'North West', 'North East', 'Scotland', 'Wales', 'Northern Ireland'
-];
 
 // Helper function to add audit log entry
 function addAuditLogEntry(adminEmail, recordId, action, changes) {
@@ -77,7 +72,7 @@ function getRecordsFromDatabase() {
         try {
             const profilesResult = db.exec(`
                 SELECT user_id, age, annual_income, employment_status, household_size,
-                       has_preexisting_conditions, is_smoker, region
+                       has_preexisting_conditions, is_smoker
                 FROM user_profiles
             `);
             
@@ -150,7 +145,6 @@ function getRecordsFromDatabase() {
                 householdSize: profile.household_size || null,
                 hasPreexistingConditions: profile.has_preexisting_conditions === 1,
                 isSmoker: profile.is_smoker === 1,
-                region: profile.region || null,
                 createdAt: user.created_at,
                 updatedAt: user.updated_at,
                 spouse: spouse ? {
@@ -318,10 +312,6 @@ function updateRecordInDatabase(id, updates) {
         profileUpdates.push('is_smoker = ?');
         profileParams.push(updates.isSmoker ? 1 : 0);
     }
-    if (updates.region !== undefined) {
-        profileUpdates.push('region = ?');
-        profileParams.push(updates.region);
-    }
     
     if (profileUpdates.length > 0) {
         profileUpdates.push('updated_at = CURRENT_TIMESTAMP');
@@ -406,14 +396,6 @@ router.put('/api/records/:id', (req, res) => {
             });
         }
         
-        // Validate region if provided
-        if (updates.region && !VALID_REGIONS.includes(updates.region)) {
-            return res.status(400).json({ 
-                error: 'Invalid region', 
-                validRegions: VALID_REGIONS 
-            });
-        }
-        
         // Validate age if provided
         if (updates.age !== undefined && updates.age !== null) {
             const age = parseInt(updates.age);
@@ -449,7 +431,7 @@ router.put('/api/records/:id', (req, res) => {
         
         // Track changes for audit log
         const allowedFields = [
-            'firstName', 'lastName', 'email', 'postcode', 'age', 'region',
+            'firstName', 'lastName', 'email', 'postcode', 'age',
             'annualIncome', 'employmentStatus', 'householdSize',
             'hasPreexistingConditions', 'isSmoker', 'status'
         ];

@@ -21,18 +21,18 @@ const dummyUsers = [
 ];
 
 const dummyProfiles = [
-    { age: 32, annualIncome: 45000, employmentStatus: 'Employed', householdSize: 4, hasPreexistingConditions: 0, isSmoker: 0, region: 'London' },
-    { age: 28, annualIncome: 52000, employmentStatus: 'Employed', householdSize: 1, hasPreexistingConditions: 0, isSmoker: 0, region: 'North West' },
-    { age: 45, annualIncome: 68000, employmentStatus: 'Self-employed', householdSize: 5, hasPreexistingConditions: 0, isSmoker: 0, region: 'West Midlands' },
-    { age: 35, annualIncome: 41000, employmentStatus: 'Employed', householdSize: 3, hasPreexistingConditions: 0, isSmoker: 0, region: 'North West' },
-    { age: 55, annualIncome: 38000, employmentStatus: 'Employed', householdSize: 2, hasPreexistingConditions: 1, isSmoker: 0, region: 'London' },
-    { age: 62, annualIncome: 29000, employmentStatus: 'Retired', householdSize: 1, hasPreexistingConditions: 1, isSmoker: 0, region: 'Scotland' },
-    { age: 41, annualIncome: 55000, employmentStatus: 'Employed', householdSize: 4, hasPreexistingConditions: 0, isSmoker: 1, region: 'Wales' },
-    { age: 38, annualIncome: 47000, employmentStatus: 'Self-employed', householdSize: 3, hasPreexistingConditions: 1, isSmoker: 0, region: 'Scotland' },
-    { age: 67, annualIncome: 22000, employmentStatus: 'Retired', householdSize: 2, hasPreexistingConditions: 1, isSmoker: 1, region: 'Yorkshire and the Humber' },
-    { age: 29, annualIncome: 18000, employmentStatus: 'Unemployed', householdSize: 1, hasPreexistingConditions: 0, isSmoker: 1, region: 'North East' },
-    { age: 71, annualIncome: 19000, employmentStatus: 'Retired', householdSize: 2, hasPreexistingConditions: 1, isSmoker: 0, region: 'South West' },
-    { age: 24, annualIncome: 21000, employmentStatus: 'Employed', householdSize: 1, hasPreexistingConditions: 0, isSmoker: 1, region: 'East Midlands' }
+    { age: 32, annualIncome: 45000, employmentStatus: 'Employed', householdSize: 4, hasPreexistingConditions: 0, isSmoker: 0 },
+    { age: 28, annualIncome: 52000, employmentStatus: 'Employed', householdSize: 1, hasPreexistingConditions: 0, isSmoker: 0 },
+    { age: 45, annualIncome: 68000, employmentStatus: 'Self-employed', householdSize: 5, hasPreexistingConditions: 0, isSmoker: 0 },
+    { age: 35, annualIncome: 41000, employmentStatus: 'Employed', householdSize: 3, hasPreexistingConditions: 0, isSmoker: 0 },
+    { age: 55, annualIncome: 38000, employmentStatus: 'Employed', householdSize: 2, hasPreexistingConditions: 1, isSmoker: 0 },
+    { age: 62, annualIncome: 29000, employmentStatus: 'Retired', householdSize: 1, hasPreexistingConditions: 1, isSmoker: 0 },
+    { age: 41, annualIncome: 55000, employmentStatus: 'Employed', householdSize: 4, hasPreexistingConditions: 0, isSmoker: 1 },
+    { age: 38, annualIncome: 47000, employmentStatus: 'Self-employed', householdSize: 3, hasPreexistingConditions: 1, isSmoker: 0 },
+    { age: 67, annualIncome: 22000, employmentStatus: 'Retired', householdSize: 2, hasPreexistingConditions: 1, isSmoker: 1 },
+    { age: 29, annualIncome: 18000, employmentStatus: 'Unemployed', householdSize: 1, hasPreexistingConditions: 0, isSmoker: 1 },
+    { age: 71, annualIncome: 19000, employmentStatus: 'Retired', householdSize: 2, hasPreexistingConditions: 1, isSmoker: 0 },
+    { age: 24, annualIncome: 21000, employmentStatus: 'Employed', householdSize: 1, hasPreexistingConditions: 0, isSmoker: 1 }
 ];
 
 // Family members: some users have spouse, some have children, some have both, some have none
@@ -199,8 +199,8 @@ async function initializeDatabase() {
         
         // Insert profile
         db.run(`
-            INSERT INTO user_profiles (user_id, age, annual_income, employment_status, household_size, has_preexisting_conditions, is_smoker, region, wants_private_dental, wants_outpatient_cover, wants_mental_health_cover)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO user_profiles (user_id, age, annual_income, employment_status, household_size, has_preexisting_conditions, is_smoker, wants_private_dental, wants_outpatient_cover, wants_mental_health_cover)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
             userId,
             profile.age,
@@ -209,7 +209,6 @@ async function initializeDatabase() {
             profile.householdSize,
             profile.hasPreexistingConditions,
             profile.isSmoker,
-            profile.region,
             0, // wants_private_dental
             0, // wants_outpatient_cover
             0  // wants_mental_health_cover
