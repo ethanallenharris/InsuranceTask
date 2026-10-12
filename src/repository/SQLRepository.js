@@ -4,6 +4,7 @@ const UserProfile = require('../models/UserProfile');
 const EligibilityResult = require('../models/EligibilityResult');
 const InsurancePlan = require('../models/InsurancePlan');
 const { encrypt, decrypt, hashEmail } = require('../utils/encryption');
+const { sendProcessingConfirmationEmail } = require('../services/emailService');
 
 /**
  * SQL-based repository for persistent storage
@@ -223,6 +224,14 @@ class SQLRepository {
         
         // Save to file
         saveDatabase();
+        
+        // Send confirmation email to user
+        const user = this.getUser(profile.userId);
+        if (user) {
+            sendProcessingConfirmationEmail(user, profile).catch(err => {
+                console.error('Failed to send confirmation email:', err);
+            });
+        }
         
         return profileId;
     }
