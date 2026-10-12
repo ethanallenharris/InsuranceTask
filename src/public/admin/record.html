@@ -428,15 +428,27 @@
             margin-bottom: 0;
         }
 
-        .family-member-name {
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 0.5rem;
+        .family-member-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
         }
 
-        .family-member-details {
-            font-size: 0.9rem;
+        .family-member-title {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .family-member-id {
+            font-size: 0.8rem;
             color: #666;
+        }
+
+        .family-member-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
         }
 
         .no-family {
@@ -446,6 +458,10 @@
 
         @media (max-width: 600px) {
             .info-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .family-member-grid {
                 grid-template-columns: 1fr;
             }
 
@@ -688,7 +704,7 @@
             document.getElementById('lastName').addEventListener('input', updateTitle);
         }
 
-        // Render family section
+        // Render family section with editable fields
         function renderFamilySection(record) {
             let html = '';
 
@@ -701,10 +717,30 @@
                         </div>
                         <div class="family-card-body">
                             <div class="family-member">
-                                <div class="family-member-name">${escapeHtml(record.spouse.firstName || '')} ${escapeHtml(record.spouse.lastName || '')}</div>
-                                <div class="family-member-details">
-                                    Date of Birth: ${record.spouse.dateOfBirth || '-'}<br>
-                                    Pre-existing Conditions: ${record.spouse.hasPreexistingConditions ? 'Yes' : 'No'}
+                                <div class="family-member-header">
+                                    <span class="family-member-title">Spouse Details</span>
+                                    <span class="family-member-id">ID: ${record.spouse.id}</span>
+                                </div>
+                                <div class="family-member-grid">
+                                    <div class="info-item">
+                                        <label class="info-label" for="spouseFirstName">First Name</label>
+                                        <input type="text" id="spouseFirstName" class="form-input" value="${escapeHtml(record.spouse.firstName || '')}" data-member-id="${record.spouse.id}" />
+                                    </div>
+                                    <div class="info-item">
+                                        <label class="info-label" for="spouseLastName">Last Name</label>
+                                        <input type="text" id="spouseLastName" class="form-input" value="${escapeHtml(record.spouse.lastName || '')}" data-member-id="${record.spouse.id}" />
+                                    </div>
+                                    <div class="info-item">
+                                        <label class="info-label" for="spouseDateOfBirth">Date of Birth</label>
+                                        <input type="date" id="spouseDateOfBirth" class="form-input" value="${record.spouse.dateOfBirth || ''}" data-member-id="${record.spouse.id}" />
+                                    </div>
+                                    <div class="info-item">
+                                        <span class="info-label">Pre-existing Conditions</span>
+                                        <div class="toggle-switch">
+                                            <input type="checkbox" id="spousePreexisting" ${record.spouse.hasPreexistingConditions ? 'checked' : ''} data-member-id="${record.spouse.id}" />
+                                            <span class="toggle-label" id="spousePreexistingLabel">${record.spouse.hasPreexistingConditions ? 'Yes' : 'No'}</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -720,12 +756,32 @@
                             <h3>Children (${record.children.length})</h3>
                         </div>
                         <div class="family-card-body">
-                            ${record.children.map(child => `
+                            ${record.children.map((child, index) => `
                                 <div class="family-member">
-                                    <div class="family-member-name">${escapeHtml(child.firstName || '')} ${escapeHtml(child.lastName || '')}</div>
-                                    <div class="family-member-details">
-                                        Date of Birth: ${child.dateOfBirth || '-'}<br>
-                                        Pre-existing Conditions: ${child.hasPreexistingConditions ? 'Yes' : 'No'}
+                                    <div class="family-member-header">
+                                        <span class="family-member-title">Child ${index + 1}</span>
+                                        <span class="family-member-id">ID: ${child.id}</span>
+                                    </div>
+                                    <div class="family-member-grid">
+                                        <div class="info-item">
+                                            <label class="info-label" for="childFirstName_${child.id}">First Name</label>
+                                            <input type="text" id="childFirstName_${child.id}" class="form-input child-input" value="${escapeHtml(child.firstName || '')}" data-member-id="${child.id}" data-field="firstName" />
+                                        </div>
+                                        <div class="info-item">
+                                            <label class="info-label" for="childLastName_${child.id}">Last Name</label>
+                                            <input type="text" id="childLastName_${child.id}" class="form-input child-input" value="${escapeHtml(child.lastName || '')}" data-member-id="${child.id}" data-field="lastName" />
+                                        </div>
+                                        <div class="info-item">
+                                            <label class="info-label" for="childDateOfBirth_${child.id}">Date of Birth</label>
+                                            <input type="date" id="childDateOfBirth_${child.id}" class="form-input child-input" value="${child.dateOfBirth || ''}" data-member-id="${child.id}" data-field="dateOfBirth" />
+                                        </div>
+                                        <div class="info-item">
+                                            <span class="info-label">Pre-existing Conditions</span>
+                                            <div class="toggle-switch">
+                                                <input type="checkbox" id="childPreexisting_${child.id}" class="child-preexisting" ${child.hasPreexistingConditions ? 'checked' : ''} data-member-id="${child.id}" />
+                                                <span class="toggle-label" id="childPreexistingLabel_${child.id}">${child.hasPreexistingConditions ? 'Yes' : 'No'}</span>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             `).join('')}
@@ -748,6 +804,22 @@
             }
 
             familySection.innerHTML = html;
+
+            // Add event listeners for spouse toggle
+            const spousePreexisting = document.getElementById('spousePreexisting');
+            if (spousePreexisting) {
+                spousePreexisting.addEventListener('change', (e) => {
+                    document.getElementById('spousePreexistingLabel').textContent = e.target.checked ? 'Yes' : 'No';
+                });
+            }
+
+            // Add event listeners for children toggles
+            document.querySelectorAll('.child-preexisting').forEach(checkbox => {
+                checkbox.addEventListener('change', (e) => {
+                    const memberId = e.target.dataset.memberId;
+                    document.getElementById(`childPreexistingLabel_${memberId}`).textContent = e.target.checked ? 'Yes' : 'No';
+                });
+            });
         }
 
         // Update the record title when name changes
@@ -757,9 +829,9 @@
             document.getElementById('recordTitle').textContent = `${firstName} ${lastName}`.trim() || 'Unnamed Record';
         }
 
-        // Gather form data
+        // Gather form data including family members
         function getFormData() {
-            return {
+            const data = {
                 firstName: document.getElementById('firstName').value.trim(),
                 lastName: document.getElementById('lastName').value.trim(),
                 email: document.getElementById('email').value.trim(),
@@ -773,6 +845,31 @@
                 isSmoker: document.getElementById('isSmoker').checked,
                 status: selectedStatus
             };
+
+            // Gather spouse data if exists
+            const spouseFirstName = document.getElementById('spouseFirstName');
+            if (spouseFirstName && currentRecord.spouse) {
+                data.spouse = {
+                    id: currentRecord.spouse.id,
+                    firstName: spouseFirstName.value.trim(),
+                    lastName: document.getElementById('spouseLastName').value.trim(),
+                    dateOfBirth: document.getElementById('spouseDateOfBirth').value || null,
+                    hasPreexistingConditions: document.getElementById('spousePreexisting').checked
+                };
+            }
+
+            // Gather children data if exists
+            if (currentRecord.children && currentRecord.children.length > 0) {
+                data.children = currentRecord.children.map(child => ({
+                    id: child.id,
+                    firstName: document.getElementById(`childFirstName_${child.id}`).value.trim(),
+                    lastName: document.getElementById(`childLastName_${child.id}`).value.trim(),
+                    dateOfBirth: document.getElementById(`childDateOfBirth_${child.id}`).value || null,
+                    hasPreexistingConditions: document.getElementById(`childPreexisting_${child.id}`).checked
+                }));
+            }
+
+            return data;
         }
 
         // Save record
@@ -809,6 +906,7 @@
                 currentRecord = result.record;
                 selectedStatus = currentRecord.status;
                 renderRecord(currentRecord);
+                renderFamilySection(currentRecord);
 
                 // Hide success message after 3 seconds
                 setTimeout(() => {

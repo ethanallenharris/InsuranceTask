@@ -183,6 +183,74 @@ function getRecordFromDatabase(id) {
     return records.find(r => r.id === id) || null;
 }
 
+// Helper function to update family member in database
+function updateFamilyMemberInDatabase(memberId, updates) {
+    const { getConnection, saveDatabase } = require('../database/connection');
+    const db = getConnection();
+    
+    const updateFields = [];
+    const params = [];
+    
+    if (updates.firstName !== undefined) {
+        updateFields.push('first_name = ?');
+        params.push(updates.firstName);
+    }
+    if (updates.lastName !== undefined) {
+        updateFields.push('last_name = ?');
+        params.push(updates.lastName);
+    }
+    if (updates.dateOfBirth !== undefined) {
+        updateFields.push('date_of_birth = ?');
+        params.push(updates.dateOfBirth);
+    }
+    if (updates.hasPreexistingConditions !== undefined) {
+        updateFields.push('has_preexisting_conditions = ?');
+        params.push(updates.hasPreexistingConditions ? 1 : 0);
+    }
+    
+    if (updateFields.length > 0) {
+        updateFields.push('updated_at = CURRENT_TIMESTAMP');
+        params.push(memberId);
+        db.run(`UPDATE family_members SET ${updateFields.join(', ')} WHERE id = ?`, params);
+        saveDatabase();
+    }
+}
+
+// Helper function to get family member from database
+function getFamilyMemberFromDatabase(memberId) {
+    const { getConnection } = require('../database/connection');
+    const db = getConnection();
+    
+    try {
+        const result = db.exec(`
+            SELECT id, user_id, relationship, first_name, last_name, date_of_birth, has_preexisting_conditions
+            FROM family_members
+            WHERE id = ?
+        `, [memberId]);
+        
+        if (result.length > 0 && result[0].values.length > 0) {
+            const columns = result[0].columns;
+            const row = result[0].values[0];
+            const member = {};
+            columns.forEach((col, index) => {
+                member[col] = row[index];
+            });
+            return {
+                id: member.id,
+                userId: member.user_id,
+                relationship: member.relationship,
+                firstName: member.first_name,
+                lastName: member.last_name,
+                dateOfBirth: member.date_of_birth,
+                hasPreexistingConditions: member.has_preexisting_conditions === 1
+            };
+        }
+    } catch (err) {
+        console.error('Error fetching family member:', err);
+    }
+    return null;
+}
+
 // Helper function to update record in database
 function updateRecordInDatabase(id, updates) {
     const { getConnection, saveDatabase } = require('../database/connection');
@@ -397,12 +465,60 @@ router.put('/api/records/:id', (req, res) => {
         });
         
         // Update the record in database
-        const updatedRecord = updateRecordInDatabase(id, updates);
+        updateRecordInDatabase(id, updates);
+        
+        // Handle spouse updates
+        if (updates.spouse && existingRecord.spouse) {
+            const spouseChanges = {};
+            const spouseFields = ['firstName', 'lastName', 'dateOfBirth', 'hasPreexistingConditions'];
+            
+            spouseFields.forEach(field => {
+                if (updates.spouse[field] !== undefined && updates.spouse[field] !== existingRecord.spouse[field]) {
+                    spouseChanges[`spouse.${field}`] = {
+                        from: existingRecord.spouse[field],
+                        to: updates.spouse[field]
+                    };
+                }
+            });
+            
+            if (Object.keys(spouseChanges).length > 0) {
+                updateFamilyMemberInDatabase(existingRecord.spouse.id, updates.spouse);
+                Object.assign(changes, spouseChanges);
+            }
+        }
+        
+        // Handle children updates
+        if (updates.children && existingRecord.children) {
+            updates.children.forEach(updatedChild => {
+                const existingChild = existingRecord.children.find(c => c.id === updatedChild.id);
+                if (existingChild) {
+                    const childChanges = {};
+                    const childFields = ['firstName', 'lastName', 'dateOfBirth', 'hasPreexistingConditions'];
+                    
+                    childFields.forEach(field => {
+                        if (updatedChild[field] !== undefined && updatedChild[field] !== existingChild[field]) {
+                            childChanges[`child[${updatedChild.id}].${field}`] = {
+                                from: existingChild[field],
+                                to: updatedChild[field]
+                            };
+                        }
+                    });
+                    
+                    if (Object.keys(childChanges).length > 0) {
+                        updateFamilyMemberInDatabase(updatedChild.id, updatedChild);
+                        Object.assign(changes, childChanges);
+                    }
+                }
+            });
+        }
         
         // Add audit log entry if there were changes
         if (Object.keys(changes).length > 0) {
             addAuditLogEntry(adminEmail, id, 'update', changes);
         }
+        
+        // Get the updated record
+        const updatedRecord = getRecordFromDatabase(id);
         
         res.json({ 
             success: true, 
