@@ -1,6 +1,5 @@
 /**
  * Represents user information for insurance eligibility.
- * Structure designed for easy TypeScript migration.
  */
 class UserProfile {
     /**
@@ -18,6 +17,8 @@ class UserProfile {
      * @param {boolean|null} data.wantsPrivateDental
      * @param {boolean|null} data.wantsOutpatientCover
      * @param {boolean|null} data.wantsMentalHealthCover
+     * @param {boolean} data.hasSpouse
+     * @param {number} data.numberOfChildren
      */
     constructor(data = {}) {
         this.id = data.id || null;
@@ -29,10 +30,12 @@ class UserProfile {
         this.hasPreexistingConditions = data.hasPreexistingConditions || null;
         this.isSmoker = data.isSmoker || null;
         this.region = data.region || null;
-        this.hasNhsDentist = data.hasNhsDentist || null;
+        this.hasNhsDentist = data.hasNhsDentist !== undefined ? data.hasNhsDentist : null;
         this.wantsPrivateDental = data.wantsPrivateDental || null;
         this.wantsOutpatientCover = data.wantsOutpatientCover || null;
         this.wantsMentalHealthCover = data.wantsMentalHealthCover || null;
+        this.hasSpouse = data.hasSpouse || false;
+        this.numberOfChildren = data.numberOfChildren || 0;
     }
 
     toDict() {
@@ -49,7 +52,9 @@ class UserProfile {
             hasNhsDentist: this.hasNhsDentist,
             wantsPrivateDental: this.wantsPrivateDental,
             wantsOutpatientCover: this.wantsOutpatientCover,
-            wantsMentalHealthCover: this.wantsMentalHealthCover
+            wantsMentalHealthCover: this.wantsMentalHealthCover,
+            hasSpouse: this.hasSpouse,
+            numberOfChildren: this.numberOfChildren
         };
     }
 
