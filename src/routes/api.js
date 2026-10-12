@@ -16,22 +16,22 @@ router.get('/questions', (req, res) => {
             id: 'age',
             type: 'number',
             question: 'What is your age?',
-            min: 0,
-            max: 120,
+            min: 18,
+            max: 100,
             required: true
         },
         {
             id: 'householdSize',
             type: 'number',
-            question: 'How many people are in your household (including yourself)?',
+            question: 'How many people would be covered by this policy (including yourself)?',
             min: 1,
-            max: 20,
+            max: 10,
             required: true
         },
         {
             id: 'annualIncome',
             type: 'number',
-            question: 'What is your annual household income ($)?',
+            question: 'What is your annual household income (£)?',
             min: 0,
             required: true
         },
@@ -43,16 +43,10 @@ router.get('/questions', (req, res) => {
             required: true
         },
         {
-            id: 'state',
-            type: 'text',
-            question: 'What state do you live in? (e.g., CA, NY, TX)',
-            maxLength: 2,
-            required: true
-        },
-        {
-            id: 'currentlyInsured',
-            type: 'boolean',
-            question: 'Do you currently have health insurance?',
+            id: 'region',
+            type: 'choice',
+            question: 'Which region of the UK do you live in?',
+            options: ['London', 'South East', 'South West', 'East of England', 'West Midlands', 'East Midlands', 'Yorkshire and the Humber', 'North West', 'North East', 'Scotland', 'Wales', 'Northern Ireland'],
             required: true
         },
         {
@@ -64,7 +58,25 @@ router.get('/questions', (req, res) => {
         {
             id: 'isSmoker',
             type: 'boolean',
-            question: 'Do you use tobacco products?',
+            question: 'Do you smoke or use tobacco products?',
+            required: true
+        },
+        {
+            id: 'wantsOutpatientCover',
+            type: 'boolean',
+            question: 'Do you want outpatient cover (consultations, tests, scans)?',
+            required: true
+        },
+        {
+            id: 'wantsMentalHealthCover',
+            type: 'boolean',
+            question: 'Do you want mental health cover included?',
+            required: true
+        },
+        {
+            id: 'wantsPrivateDental',
+            type: 'boolean',
+            question: 'Do you want private dental cover included?',
             required: true
         }
     ];

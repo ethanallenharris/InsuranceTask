@@ -1,130 +1,180 @@
 const InsurancePlan = require('../models/InsurancePlan');
 const EligibilityResult = require('../models/EligibilityResult');
 
-// 2024 Federal Poverty Level guidelines (simplified)
-const FPL_BASE = 14580;
-const FPL_PER_PERSON = 5140;
-
 /**
- * Calculate Federal Poverty Level percentage
- * @param {number} annualIncome
- * @param {number} householdSize
- * @returns {number}
- */
-function calculateFplPercentage(annualIncome, householdSize) {
-    const fplThreshold = FPL_BASE + (householdSize - 1) * FPL_PER_PERSON;
-    return (annualIncome / fplThreshold) * 100;
-}
-
-/**
- * Get all available insurance plans
+ * Get all available private health insurance plans
  * @returns {InsurancePlan[]}
  */
 function getAvailablePlans() {
     return [
         new InsurancePlan({
-            planId: 'bronze_basic',
-            name: 'Bronze Basic',
-            planType: 'Bronze',
-            monthlyPremium: 250,
-            deductible: 6500,
-            coverageLevel: '60%',
-            description: 'Lower premiums, higher out-of-pocket costs'
+            planId: 'essential_cover',
+            name: 'Essential Cover',
+            planType: 'Basic',
+            monthlyPremium: 45,
+            deductible: 500,
+            coverageLevel: 'Core',
+            description: 'Covers inpatient treatment and day-patient surgery. Ideal for those wanting basic private hospital cover.'
         }),
         new InsurancePlan({
-            planId: 'silver_standard',
-            name: 'Silver Standard',
-            planType: 'Silver',
-            monthlyPremium: 350,
-            deductible: 4500,
-            coverageLevel: '70%',
-            description: 'Moderate premiums and out-of-pocket costs'
+            planId: 'standard_cover',
+            name: 'Standard Cover',
+            planType: 'Standard',
+            monthlyPremium: 75,
+            deductible: 250,
+            coverageLevel: 'Extended',
+            description: 'Includes inpatient, day-patient, and outpatient consultations. Good all-round protection.'
         }),
         new InsurancePlan({
-            planId: 'gold_plus',
-            name: 'Gold Plus',
-            planType: 'Gold',
-            monthlyPremium: 450,
-            deductible: 2500,
-            coverageLevel: '80%',
-            description: 'Higher premiums, lower out-of-pocket costs'
+            planId: 'comprehensive_cover',
+            name: 'Comprehensive Cover',
+            planType: 'Comprehensive',
+            monthlyPremium: 120,
+            deductible: 100,
+            coverageLevel: 'Full',
+            description: 'Full cover including mental health, therapies, and dental. Our most complete package.'
         }),
         new InsurancePlan({
-            planId: 'platinum_premium',
-            name: 'Platinum Premium',
-            planType: 'Platinum',
-            monthlyPremium: 550,
-            deductible: 1000,
-            coverageLevel: '90%',
-            description: 'Highest premiums, lowest out-of-pocket costs'
+            planId: 'premium_cover',
+            name: 'Premium Cover',
+            planType: 'Premium',
+            monthlyPremium: 180,
+            deductible: 0,
+            coverageLevel: 'Premium',
+            description: 'No excess, worldwide cover, private GP access, and full wellness benefits. The ultimate in private healthcare.'
         })
     ];
 }
 
 /**
- * Check Medicaid eligibility
+ * Calculate recommended monthly budget based on income
+ * @param {number} annualIncome
+ * @returns {number}
+ */
+function calculateRecommendedBudget(annualIncome) {
+    // Recommend 2-4% of annual income for health insurance
+    const monthlyIncome = annualIncome / 12;
+    return Math.round(monthlyIncome * 0.03); // 3% as middle ground
+}
+
+/**
+ * Check if pre-existing conditions may affect coverage
  * @param {import('../models/UserProfile')} profile
  * @returns {boolean}
  */
-function checkMedicaidEligibility(profile) {
-    const fplPercentage = calculateFplPercentage(profile.annualIncome, profile.householdSize);
-    // Medicaid expansion states: eligible if income <= 138% FPL
-    return fplPercentage <= 138;
+function checkPreexistingConditionRestrictions(profile) {
+    // In the UK, pre-existing conditions are typically excluded or have waiting periods
+    return profile.hasPreexistingConditions === true;
 }
 
 /**
- * Check Medicare eligibility
+ * Generate a recommendation based on user profile
  * @param {import('../models/UserProfile')} profile
- * @returns {boolean}
+ * @returns {string}
  */
-function checkMedicareEligibility(profile) {
-    return profile.age >= 65;
-}
-
-/**
- * Calculate subsidy eligibility and amount
- * @param {import('../models/UserProfile')} profile
- * @returns {{eligible: boolean, amount: number}}
- */
-function calculateSubsidy(profile) {
-    const fplPercentage = calculateFplPercentage(profile.annualIncome, profile.householdSize);
+function generateRecommendation(profile) {
+    const recommendations = [];
     
-    // Subsidies available for 100-400% FPL
-    if (fplPercentage < 100 || fplPercentage > 400) {
-        return { eligible: false, amount: 0 };
+    if (profile.age >= 55) {
+        recommendations.push('Given your age, we recommend considering a comprehensive plan with good outpatient cover for routine check-ups.');
     }
     
-    // Simplified subsidy calculation
-    let subsidyPercentage;
-    if (fplPercentage <= 150) {
-        subsidyPercentage = 0.8;
-    } else if (fplPercentage <= 200) {
-        subsidyPercentage = 0.6;
-    } else if (fplPercentage <= 250) {
-        subsidyPercentage = 0.4;
-    } else if (fplPercentage <= 300) {
-        subsidyPercentage = 0.25;
-    } else {
-        subsidyPercentage = 0.1;
+    if (profile.hasPreexistingConditions) {
+        recommendations.push('Pre-existing conditions are typically not covered immediately. Look for plans with moratorium underwriting which may cover conditions after 2 years without symptoms.');
     }
     
-    // Estimate based on silver plan premium
-    const silverPremium = 350;
-    const estimatedSubsidy = silverPremium * subsidyPercentage;
+    if (profile.isSmoker) {
+        recommendations.push('As a smoker, premiums may be higher. Some insurers offer discounts if you join a smoking cessation programme.');
+    }
     
-    return { eligible: true, amount: Math.round(estimatedSubsidy) };
+    if (profile.wantsMentalHealthCover) {
+        recommendations.push('Mental health cover varies significantly between providers. Check the specific limits on therapy sessions and psychiatric treatment.');
+    }
+    
+    if (profile.wantsPrivateDental) {
+        recommendations.push('Dental cover can be added to most plans or purchased separately. Consider the annual limits on treatment.');
+    }
+    
+    if (profile.employmentStatus === 'Self-employed') {
+        recommendations.push('As self-employed, you may want to consider income protection insurance alongside health cover.');
+    }
+    
+    if (recommendations.length === 0) {
+        recommendations.push('Based on your profile, a standard private health insurance plan should meet your needs well.');
+    }
+    
+    return recommendations.join(' ');
 }
 
 /**
- * Filter plans based on user profile
+ * Filter plans based on user profile and preferences
  * @param {import('../models/UserProfile')} profile
  * @param {InsurancePlan[]} plans
  * @returns {InsurancePlan[]}
  */
 function filterEligiblePlans(profile, plans) {
-    // All marketplace plans are available to everyone
-    // Could add filtering logic based on state, etc.
-    return plans;
+    const budget = calculateRecommendedBudget(profile.annualIncome);
+    
+    // Filter based on preferences
+    let filteredPlans = plans;
+    
+    // If they want mental health or dental, recommend comprehensive or premium
+    if (profile.wantsMentalHealthCover || profile.wantsPrivateDental) {
+        filteredPlans = plans.filter(plan => 
+            plan.planType === 'Comprehensive' || plan.planType === 'Premium'
+        );
+    }
+    
+    // If they want outpatient cover, exclude basic
+    if (profile.wantsOutpatientCover) {
+        filteredPlans = filteredPlans.filter(plan => plan.planType !== 'Basic');
+    }
+    
+    // If no plans match preferences, return all plans
+    if (filteredPlans.length === 0) {
+        filteredPlans = plans;
+    }
+    
+    // Sort by premium (lowest first)
+    return filteredPlans.sort((a, b) => a.monthlyPremium - b.monthlyPremium);
+}
+
+/**
+ * Apply age-based premium adjustments
+ * @param {InsurancePlan[]} plans
+ * @param {number} age
+ * @returns {InsurancePlan[]}
+ */
+function applyAgePremiumAdjustment(plans, age) {
+    // Age affects premiums in UK private health insurance
+    let multiplier = 1.0;
+    
+    if (age < 30) {
+        multiplier = 0.8;
+    } else if (age >= 30 && age < 40) {
+        multiplier = 1.0;
+    } else if (age >= 40 && age < 50) {
+        multiplier = 1.3;
+    } else if (age >= 50 && age < 60) {
+        multiplier = 1.6;
+    } else if (age >= 60 && age < 70) {
+        multiplier = 2.0;
+    } else {
+        multiplier = 2.5;
+    }
+    
+    return plans.map(plan => {
+        const adjustedPlan = new InsurancePlan({
+            planId: plan.planId,
+            name: plan.name,
+            planType: plan.planType,
+            monthlyPremium: Math.round(plan.monthlyPremium * multiplier),
+            deductible: plan.deductible,
+            coverageLevel: plan.coverageLevel,
+            description: plan.description
+        });
+        return adjustedPlan;
+    });
 }
 
 /**
@@ -133,33 +183,47 @@ function filterEligiblePlans(profile, plans) {
  * @returns {EligibilityResult}
  */
 function determineEligibility(profile) {
-    const medicaidEligible = checkMedicaidEligibility(profile);
-    const medicareEligible = checkMedicareEligibility(profile);
-    const subsidy = calculateSubsidy(profile);
+    const hasRestrictions = checkPreexistingConditionRestrictions(profile);
+    const recommendation = generateRecommendation(profile);
+    const estimatedBudget = calculateRecommendedBudget(profile.annualIncome);
     
-    let eligiblePlans = [];
+    let allPlans = getAvailablePlans();
     
-    if (!medicaidEligible && !medicareEligible) {
-        const allPlans = getAvailablePlans();
-        eligiblePlans = filterEligiblePlans(profile, allPlans);
+    // Apply age-based premium adjustments
+    allPlans = applyAgePremiumAdjustment(allPlans, profile.age);
+    
+    // Apply smoker surcharge (typically 20-30% more)
+    if (profile.isSmoker) {
+        allPlans = allPlans.map(plan => {
+            return new InsurancePlan({
+                planId: plan.planId,
+                name: plan.name,
+                planType: plan.planType,
+                monthlyPremium: Math.round(plan.monthlyPremium * 1.25),
+                deductible: plan.deductible,
+                coverageLevel: plan.coverageLevel,
+                description: plan.description
+            });
+        });
     }
+    
+    const eligiblePlans = filterEligiblePlans(profile, allPlans);
     
     return new EligibilityResult({
         userProfile: profile,
         eligiblePlans: eligiblePlans,
-        subsidyEligible: subsidy.eligible,
-        estimatedSubsidy: subsidy.amount,
-        medicaidEligible: medicaidEligible,
-        medicareEligible: medicareEligible
+        hasPreexistingConditionRestrictions: hasRestrictions,
+        recommendation: recommendation,
+        estimatedMonthlyBudget: estimatedBudget
     });
 }
 
 module.exports = {
-    calculateFplPercentage,
     getAvailablePlans,
-    checkMedicaidEligibility,
-    checkMedicareEligibility,
-    calculateSubsidy,
+    calculateRecommendedBudget,
+    checkPreexistingConditionRestrictions,
+    generateRecommendation,
     filterEligiblePlans,
+    applyAgePremiumAdjustment,
     determineEligibility
 };

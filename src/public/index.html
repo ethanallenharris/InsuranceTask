@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Health Insurance Eligibility Questionnaire</title>
+    <title>UK Private Health Insurance - Find Your Plan</title>
     <style>
         * {
             box-sizing: border-box;
@@ -19,8 +19,28 @@
         }
         
         h1 {
-            color: #2c5282;
+            color: #1e3a5f;
             text-align: center;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-top: -10px;
+            margin-bottom: 30px;
+        }
+        
+        .nhs-note {
+            background: #e8f4f8;
+            border-left: 4px solid #005eb8;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 0 8px 8px 0;
+            font-size: 0.9em;
+        }
+        
+        .nhs-note strong {
+            color: #005eb8;
         }
         
         .questionnaire-container {
@@ -60,7 +80,7 @@
         
         .progress-fill {
             height: 100%;
-            background: linear-gradient(90deg, #4299e1, #2b6cb0);
+            background: linear-gradient(90deg, #005eb8, #1e3a5f);
             transition: width 0.3s ease;
         }
         
@@ -76,7 +96,7 @@
         
         input:focus {
             outline: none;
-            border-color: #4299e1;
+            border-color: #005eb8;
         }
         
         .options-container {
@@ -98,13 +118,13 @@
         }
         
         .option-btn:hover {
-            border-color: #4299e1;
-            background: #ebf8ff;
+            border-color: #005eb8;
+            background: #e8f4f8;
         }
         
         .option-btn.selected {
-            border-color: #2b6cb0;
-            background: #bee3f8;
+            border-color: #1e3a5f;
+            background: #cce4f0;
         }
         
         .boolean-container {
@@ -125,12 +145,12 @@
         }
         
         .boolean-btn:hover {
-            border-color: #4299e1;
+            border-color: #005eb8;
         }
         
         .boolean-btn.selected {
-            border-color: #2b6cb0;
-            background: #bee3f8;
+            border-color: #1e3a5f;
+            background: #cce4f0;
         }
         
         .nav-buttons {
@@ -149,12 +169,12 @@
         }
         
         .btn-primary {
-            background: #2b6cb0;
+            background: #005eb8;
             color: white;
         }
         
         .btn-primary:hover {
-            background: #2c5282;
+            background: #1e3a5f;
         }
         
         .btn-secondary {
@@ -180,23 +200,39 @@
         }
         
         .result-section {
-            background: #ebf8ff;
+            background: #e8f4f8;
             border-radius: 8px;
             padding: 20px;
             margin-bottom: 20px;
         }
         
-        .result-section.medicaid {
-            background: #c6f6d5;
+        .result-section.warning {
+            background: #fef3cd;
+            border-left: 4px solid #ffc107;
         }
         
-        .result-section.medicare {
-            background: #feebc8;
+        .result-section.recommendation {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
         }
         
         .result-section h3 {
             margin-top: 0;
-            color: #2c5282;
+            color: #1e3a5f;
+        }
+        
+        .budget-info {
+            background: #e8f4f8;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .budget-info .amount {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #005eb8;
         }
         
         .plan-card {
@@ -211,6 +247,20 @@
             margin: 0 0 10px 0;
             color: #2d3748;
         }
+        
+        .plan-type-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .plan-type-badge.Basic { background: #e2e8f0; color: #4a5568; }
+        .plan-type-badge.Standard { background: #bee3f8; color: #2b6cb0; }
+        .plan-type-badge.Comprehensive { background: #c6f6d5; color: #276749; }
+        .plan-type-badge.Premium { background: #fbd38d; color: #975a16; }
         
         .plan-details {
             display: grid;
@@ -230,13 +280,6 @@
             color: #718096;
         }
         
-        .subsidy-info {
-            background: #c6f6d5;
-            padding: 15px;
-            border-radius: 6px;
-            margin-bottom: 20px;
-        }
-        
         .restart-btn {
             display: block;
             width: 100%;
@@ -250,7 +293,7 @@
         
         .spinner {
             border: 4px solid #e2e8f0;
-            border-top: 4px solid #2b6cb0;
+            border-top: 4px solid #005eb8;
             border-radius: 50%;
             width: 40px;
             height: 40px;
@@ -262,12 +305,34 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        
+        .currency-prefix {
+            position: relative;
+        }
+        
+        .currency-prefix input {
+            padding-left: 25px;
+        }
+        
+        .currency-prefix::before {
+            content: '£';
+            position: absolute;
+            left: 12px;
+            top: 12px;
+            font-size: 1.1em;
+            color: #718096;
+        }
     </style>
 </head>
 <body>
-    <h1>🏥 Health Insurance Eligibility</h1>
+    <h1>🏥 UK Private Health Insurance</h1>
+    <p class="subtitle">Find the right private health cover for you</p>
     
     <div class="questionnaire-container">
+        <div class="nhs-note">
+            <strong>Note:</strong> The NHS provides free healthcare for UK residents. Private health insurance offers additional benefits such as shorter waiting times, choice of consultant, and private hospital rooms.
+        </div>
+        
         <div class="progress-bar">
             <div class="progress-fill" id="progressFill" style="width: 0%"></div>
         </div>
@@ -318,12 +383,15 @@
             
             switch (q.type) {
                 case 'number':
+                    const isCurrency = q.id === 'annualIncome';
                     inputHtml = `
-                        <input type="number" id="answer" 
-                            min="${q.min || ''}" 
-                            max="${q.max || ''}" 
-                            placeholder="Enter a number"
-                            value="${answers[q.id] || ''}">
+                        <div class="${isCurrency ? 'currency-prefix' : ''}">
+                            <input type="number" id="answer" 
+                                min="${q.min || ''}" 
+                                max="${q.max || ''}" 
+                                placeholder="${isCurrency ? 'Enter amount' : 'Enter a number'}"
+                                value="${answers[q.id] || ''}">
+                        </div>
                     `;
                     break;
                     
@@ -332,8 +400,7 @@
                         <input type="text" id="answer" 
                             maxlength="${q.maxLength || ''}" 
                             placeholder="Enter your answer"
-                            value="${answers[q.id] || ''}"
-                            style="text-transform: uppercase;">
+                            value="${answers[q.id] || ''}">
                     `;
                     break;
                     
@@ -374,7 +441,7 @@
                             ← Back
                         </button>
                         <button class="btn btn-primary" onclick="nextQuestion()">
-                            ${currentQuestion === questions.length - 1 ? 'Submit' : 'Next →'}
+                            ${currentQuestion === questions.length - 1 ? 'Get Quotes' : 'Next →'}
                         </button>
                     </div>
                 </div>
@@ -408,7 +475,7 @@
             
             if (q.type === 'number' || q.type === 'text') {
                 const input = document.getElementById('answer');
-                const value = q.type === 'number' ? parseFloat(input.value) : input.value.toUpperCase();
+                const value = q.type === 'number' ? parseFloat(input.value) : input.value;
                 
                 if (q.required && (input.value === '' || (q.type === 'number' && isNaN(value)))) {
                     alert('Please enter a valid answer');
@@ -447,7 +514,7 @@
             document.getElementById('questionsContainer').innerHTML = `
                 <div class="loading">
                     <div class="spinner"></div>
-                    <p>Analyzing your eligibility...</p>
+                    <p>Finding the best plans for you...</p>
                 </div>
             `;
             
@@ -477,68 +544,61 @@
             document.getElementById('questionsContainer').style.display = 'none';
             document.querySelector('.progress-bar').style.display = 'none';
             
-            let html = '<h2>Your Eligibility Results</h2>';
+            let html = '<h2>Your Private Health Insurance Options</h2>';
             
-            if (result.medicaidEligible) {
+            // Budget recommendation
+            html += `
+                <div class="budget-info">
+                    <p>Based on your income, we recommend a monthly budget of around</p>
+                    <p class="amount">£${result.estimatedMonthlyBudget}/month</p>
+                </div>
+            `;
+            
+            // Pre-existing conditions warning
+            if (result.hasPreexistingConditionRestrictions) {
                 html += `
-                    <div class="result-section medicaid">
-                        <h3>✅ Medicaid Eligible</h3>
-                        <p>Based on your income and household size, you may qualify for Medicaid. 
-                        This is a government program that provides free or low-cost health coverage.</p>
-                        <p><strong>Next Step:</strong> Contact your state's Medicaid office to apply.</p>
+                    <div class="result-section warning">
+                        <h3>⚠️ Pre-existing Conditions</h3>
+                        <p>Please note that pre-existing conditions are typically excluded from cover initially. 
+                        Most insurers offer "moratorium underwriting" which means conditions may be covered 
+                        after 2 years without symptoms or treatment. Full medical underwriting is also available 
+                        for a clearer picture of what's covered from day one.</p>
                     </div>
                 `;
             }
             
-            if (result.medicareEligible) {
+            // Personalised recommendation
+            if (result.recommendation) {
                 html += `
-                    <div class="result-section medicare">
-                        <h3>✅ Medicare Eligible</h3>
-                        <p>Based on your age, you qualify for Medicare. 
-                        This is the federal health insurance program for people 65 and older.</p>
-                        <p><strong>Next Step:</strong> Visit medicare.gov to enroll or learn more.</p>
+                    <div class="result-section recommendation">
+                        <h3>💡 Our Recommendation</h3>
+                        <p>${result.recommendation}</p>
                     </div>
                 `;
             }
             
-            if (result.subsidyEligible) {
-                html += `
-                    <div class="subsidy-info">
-                        <h3>💰 Subsidy Eligible</h3>
-                        <p>You may qualify for a premium tax credit of approximately 
-                        <strong>$${result.estimatedSubsidy}/month</strong> to help pay for marketplace insurance.</p>
-                    </div>
-                `;
-            }
-            
+            // Available plans
             if (result.eligiblePlans && result.eligiblePlans.length > 0) {
-                html += '<h3>Available Marketplace Plans</h3>';
+                html += '<h3>Available Plans</h3>';
                 
                 result.eligiblePlans.forEach(plan => {
-                    const adjustedPremium = result.subsidyEligible 
-                        ? Math.max(0, plan.monthlyPremium - result.estimatedSubsidy)
-                        : plan.monthlyPremium;
-                    
                     html += `
                         <div class="plan-card">
+                            <span class="plan-type-badge ${plan.planType}">${plan.planType}</span>
                             <h4>${plan.name}</h4>
                             <p>${plan.description}</p>
                             <div class="plan-details">
                                 <div class="plan-detail">
                                     <span class="plan-detail-label">Monthly Premium</span>
-                                    <span>$${plan.monthlyPremium}${result.subsidyEligible ? ` → <strong>$${adjustedPremium}</strong> with subsidy` : ''}</span>
+                                    <span><strong>£${plan.monthlyPremium}</strong>/month</span>
                                 </div>
                                 <div class="plan-detail">
-                                    <span class="plan-detail-label">Deductible</span>
-                                    <span>$${plan.deductible}</span>
+                                    <span class="plan-detail-label">Excess</span>
+                                    <span>£${plan.deductible}</span>
                                 </div>
                                 <div class="plan-detail">
                                     <span class="plan-detail-label">Coverage Level</span>
                                     <span>${plan.coverageLevel}</span>
-                                </div>
-                                <div class="plan-detail">
-                                    <span class="plan-detail-label">Plan Type</span>
-                                    <span>${plan.planType}</span>
                                 </div>
                             </div>
                         </div>
@@ -546,16 +606,18 @@
                 });
             }
             
-            if (!result.medicaidEligible && !result.medicareEligible && 
-                (!result.eligiblePlans || result.eligiblePlans.length === 0)) {
-                html += `
-                    <div class="result-section">
-                        <h3>ℹ️ No Plans Available</h3>
-                        <p>Based on your responses, we couldn't find any plans at this time. 
-                        Please contact a healthcare navigator for personalized assistance.</p>
-                    </div>
-                `;
-            }
+            html += `
+                <div class="result-section">
+                    <h3>📞 Next Steps</h3>
+                    <p>These are indicative quotes based on the information provided. To get an accurate quote and apply:</p>
+                    <ul>
+                        <li>Compare plans from multiple providers</li>
+                        <li>Read the policy documents carefully</li>
+                        <li>Check what's included and excluded</li>
+                        <li>Consider speaking to an independent health insurance broker</li>
+                    </ul>
+                </div>
+            `;
             
             html += `
                 <button class="btn btn-primary restart-btn" onclick="location.reload()">

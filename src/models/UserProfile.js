@@ -11,8 +11,11 @@ class UserProfile {
      * @param {number|null} data.householdSize
      * @param {boolean|null} data.hasPreexistingConditions
      * @param {boolean|null} data.isSmoker
-     * @param {string|null} data.state
-     * @param {boolean|null} data.currentlyInsured
+     * @param {string|null} data.region
+     * @param {boolean|null} data.hasNhsDentist
+     * @param {boolean|null} data.wantsPrivateDental
+     * @param {boolean|null} data.wantsOutpatientCover
+     * @param {boolean|null} data.wantsMentalHealthCover
      */
     constructor(data = {}) {
         this.id = data.id || null;
@@ -22,8 +25,11 @@ class UserProfile {
         this.householdSize = data.householdSize || null;
         this.hasPreexistingConditions = data.hasPreexistingConditions || null;
         this.isSmoker = data.isSmoker || null;
-        this.state = data.state || null;
-        this.currentlyInsured = data.currentlyInsured || null;
+        this.region = data.region || null;
+        this.hasNhsDentist = data.hasNhsDentist || null;
+        this.wantsPrivateDental = data.wantsPrivateDental || null;
+        this.wantsOutpatientCover = data.wantsOutpatientCover || null;
+        this.wantsMentalHealthCover = data.wantsMentalHealthCover || null;
     }
 
     toDict() {
@@ -35,8 +41,11 @@ class UserProfile {
             householdSize: this.householdSize,
             hasPreexistingConditions: this.hasPreexistingConditions,
             isSmoker: this.isSmoker,
-            state: this.state,
-            currentlyInsured: this.currentlyInsured
+            region: this.region,
+            hasNhsDentist: this.hasNhsDentist,
+            wantsPrivateDental: this.wantsPrivateDental,
+            wantsOutpatientCover: this.wantsOutpatientCover,
+            wantsMentalHealthCover: this.wantsMentalHealthCover
         };
     }
 
