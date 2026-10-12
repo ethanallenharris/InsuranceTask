@@ -2,6 +2,9 @@ const express = require('express');
 const path = require('path');
 const router = express.Router();
 
+// Audit log storage
+let auditLog = [];
+
 // Dummy data for testing - kept separate from main database
 // Using let so we can modify the records
 let dummyRecords = [
@@ -208,6 +211,18 @@ const VALID_REGIONS = [
     'North West', 'North East', 'Scotland', 'Wales', 'Northern Ireland'
 ];
 
+// Helper function to add audit log entry
+function addAuditLogEntry(adminEmail, recordId, action, changes) {
+    auditLog.unshift({
+        id: auditLog.length + 1,
+        adminEmail: adminEmail,
+        recordId: recordId,
+        action: action,
+        changes: changes,
+        timestamp: new Date().toISOString()
+    });
+}
+
 // Serve admin login page
 router.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '../public/admin/login.html'));
@@ -255,6 +270,7 @@ router.put('/api/records/:id', (req, res) => {
     try {
         const id = parseInt(req.params.id);
         const updates = req.body;
+        const adminEmail = req.headers['x-admin-email'] || 'unknown';
         
         // Find the record
         const recordIndex = dummyRecords.findIndex(r => r.id === id);
@@ -320,21 +336,31 @@ router.put('/api/records/:id', (req, res) => {
             updates.householdSize = size;
         }
         
-        // Update allowed fields
+        // Track changes for audit log
         const allowedFields = [
             'firstName', 'lastName', 'email', 'postcode', 'age', 'region',
             'annualIncome', 'employmentStatus', 'householdSize',
             'hasPreexistingConditions', 'isSmoker', 'status'
         ];
         
+        const changes = {};
         allowedFields.forEach(field => {
-            if (updates[field] !== undefined) {
+            if (updates[field] !== undefined && updates[field] !== dummyRecords[recordIndex][field]) {
+                changes[field] = {
+                    from: dummyRecords[recordIndex][field],
+                    to: updates[field]
+                };
                 dummyRecords[recordIndex][field] = updates[field];
             }
         });
         
         // Update timestamp
         dummyRecords[recordIndex].updatedAt = new Date().toISOString();
+        
+        // Add audit log entry if there were changes
+        if (Object.keys(changes).length > 0) {
+            addAuditLogEntry(adminEmail, id, 'update', changes);
+        }
         
         res.json({ 
             success: true, 
@@ -343,6 +369,16 @@ router.put('/api/records/:id', (req, res) => {
     } catch (error) {
         console.error('Error updating record:', error);
         res.status(500).json({ error: 'Failed to update record', details: error.message });
+    }
+});
+
+// API endpoint to get audit log
+router.get('/api/audit-log', (req, res) => {
+    try {
+        res.json({ entries: auditLog });
+    } catch (error) {
+        console.error('Error fetching audit log:', error);
+        res.status(500).json({ error: 'Failed to fetch audit log', details: error.message });
     }
 });
 

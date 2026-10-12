@@ -659,7 +659,8 @@
                 const response = await fetch(`/admin/api/records/${recordId}`, {
                     method: 'PUT',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'X-Admin-Email': adminEmail
                     },
                     body: JSON.stringify(formData)
                 });
