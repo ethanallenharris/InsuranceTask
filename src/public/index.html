@@ -465,6 +465,25 @@
             margin: 0;
             padding-left: 20px;
         }
+        
+        .inline-error {
+            color: #e53e3e;
+            font-size: 0.9em;
+            margin-top: -15px;
+            margin-bottom: 15px;
+            display: none;
+        }
+        
+        .inline-error.visible {
+            display: block;
+        }
+        
+        .checking-email {
+            color: #718096;
+            font-size: 0.9em;
+            margin-top: -15px;
+            margin-bottom: 15px;
+        }
     </style>
 </head>
 <body>
@@ -495,6 +514,8 @@
         let questions = [];
         let currentQuestion = 0;
         let answers = {};
+        let emailChecked = false;
+        let emailValid = false;
         
         async function loadQuestions() {
             try {
@@ -620,6 +641,8 @@
                             maxlength="${q.maxLength || 254}" 
                             placeholder="your.email@example.com"
                             value="${answers[q.id] || ''}">
+                        <div id="emailError" class="inline-error"></div>
+                        <div id="emailChecking" class="checking-email" style="display: none;">Checking email...</div>
                         <p class="field-hint">We'll use this to send your quote</p>
                     `;
                     break;
@@ -684,7 +707,7 @@
                             ← Back
                         </button>
                         ${showNextButton ? `
-                            <button class="btn btn-primary" onclick="nextQuestion()">
+                            <button class="btn btn-primary" id="nextBtn" onclick="nextQuestion()">
                                 ${currentQuestion === getAllQuestions().length - 1 ? 'Get Quotes' : 'Next →'}
                             </button>
                         ` : ''}
@@ -700,6 +723,61 @@
                 answerInput.addEventListener('keypress', (e) => {
                     if (e.key === 'Enter') nextQuestion();
                 });
+                
+                // Add email validation on blur for email fields
+                if (q.type === 'email') {
+                    emailChecked = false;
+                    emailValid = false;
+                    answerInput.addEventListener('blur', checkEmailExists);
+                }
+            }
+        }
+        
+        async function checkEmailExists() {
+            const input = document.getElementById('answer');
+            const errorDiv = document.getElementById('emailError');
+            const checkingDiv = document.getElementById('emailChecking');
+            const email = input.value.trim();
+            
+            // Basic email format validation first
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!email || !emailRegex.test(email)) {
+                emailChecked = false;
+                emailValid = false;
+                return;
+            }
+            
+            // Show checking message
+            checkingDiv.style.display = 'block';
+            errorDiv.classList.remove('visible');
+            
+            try {
+                const response = await fetch('/api/check-email', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+                
+                const data = await response.json();
+                
+                checkingDiv.style.display = 'none';
+                emailChecked = true;
+                
+                if (data.exists) {
+                    emailValid = false;
+                    input.classList.add('error');
+                    errorDiv.textContent = 'This email address is already registered. Please use a different email.';
+                    errorDiv.classList.add('visible');
+                } else {
+                    emailValid = true;
+                    input.classList.remove('error');
+                    errorDiv.classList.remove('visible');
+                }
+            } catch (error) {
+                checkingDiv.style.display = 'none';
+                // On error, allow proceeding (server will validate again)
+                emailChecked = true;
+                emailValid = true;
             }
         }
         
@@ -719,7 +797,7 @@
             renderQuestion();
         }
         
-        function validateCurrentAnswer() {
+        async function validateCurrentAnswer() {
             const allQuestions = getAllQuestions();
             const q = allQuestions[currentQuestion];
             
@@ -778,6 +856,16 @@
                     return { valid: false, message: 'Please enter a valid email address' };
                 }
                 
+                // Check if email was validated and is not already registered
+                if (!emailChecked) {
+                    // Trigger email check and wait for it
+                    await checkEmailExists();
+                }
+                
+                if (!emailValid) {
+                    return { valid: false, message: 'This email address is already registered. Please use a different email.' };
+                }
+                
                 return { valid: true, value: value };
             } else if (q.type === 'date') {
                 const input = document.getElementById('answer');
@@ -804,8 +892,20 @@
             return { valid: true };
         }
         
-        function nextQuestion() {
-            const validation = validateCurrentAnswer();
+        async function nextQuestion() {
+            const nextBtn = document.getElementById('nextBtn');
+            if (nextBtn) {
+                nextBtn.disabled = true;
+                nextBtn.textContent = 'Checking...';
+            }
+            
+            const validation = await validateCurrentAnswer();
+            
+            if (nextBtn) {
+                nextBtn.disabled = false;
+                const allQuestions = getAllQuestions();
+                nextBtn.textContent = currentQuestion === allQuestions.length - 1 ? 'Get Quotes' : 'Next →';
+            }
             
             if (!validation.valid) {
                 alert(validation.message);
@@ -883,6 +983,8 @@
         function restartQuestionnaire() {
             currentQuestion = 0;
             answers = {};
+            emailChecked = false;
+            emailValid = false;
             document.getElementById('questionsContainer').style.display = 'block';
             document.querySelector('.progress-bar').style.display = 'block';
             document.getElementById('resultsContainer').classList.remove('active');
