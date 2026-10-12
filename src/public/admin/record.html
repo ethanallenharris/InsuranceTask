@@ -184,9 +184,11 @@
         }
 
         .status-section {
-            background-color: #f8f9fa;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
             padding: 1.5rem;
-            border-top: 1px solid #eee;
+            margin-bottom: 1.5rem;
         }
 
         .status-section h3 {
@@ -499,6 +501,8 @@
         </div>
 
         <div id="familySection"></div>
+
+        <div id="statusSection"></div>
     </main>
 
     <script>
@@ -530,6 +534,7 @@
         // DOM elements
         const recordCard = document.getElementById('recordCard');
         const familySection = document.getElementById('familySection');
+        const statusSection = document.getElementById('statusSection');
         const loadingMessage = document.getElementById('loadingMessage');
         const successMessage = document.getElementById('successMessage');
 
@@ -551,6 +556,7 @@
                 selectedStatus = currentRecord.status;
                 renderRecord(currentRecord);
                 renderFamilySection(currentRecord);
+                renderStatusSection(currentRecord);
             } catch (error) {
                 console.error('Error fetching record:', error);
                 recordCard.innerHTML = '<div class="error-message">Failed to load record. Please try again.</div>';
@@ -661,34 +667,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="status-section">
-                    <h3>Update Status</h3>
-                    <div class="status-options">
-                        <div class="status-option accepted ${selectedStatus === 'accepted' ? 'selected' : ''}" data-status="accepted">
-                            <span class="status-option-label">Accepted</span>
-                        </div>
-                        <div class="status-option referred ${selectedStatus === 'referred' ? 'selected' : ''}" data-status="referred">
-                            <span class="status-option-label">Referred</span>
-                        </div>
-                        <div class="status-option rejected ${selectedStatus === 'rejected' ? 'selected' : ''}" data-status="rejected">
-                            <span class="status-option-label">Rejected</span>
-                        </div>
-                    </div>
-                    <div class="action-buttons">
-                        <button class="btn btn-secondary" onclick="window.location.href='/admin/dashboard'">Cancel</button>
-                        <button class="btn btn-primary" id="saveButton" onclick="saveRecord()">Save Changes</button>
-                    </div>
-                </div>
             `;
-
-            // Add click handlers for status options
-            document.querySelectorAll('.status-option').forEach(option => {
-                option.addEventListener('click', () => {
-                    document.querySelectorAll('.status-option').forEach(opt => opt.classList.remove('selected'));
-                    option.classList.add('selected');
-                    selectedStatus = option.dataset.status;
-                });
-            });
 
             // Add change handlers for toggle switches
             document.getElementById('hasPreexistingConditions').addEventListener('change', (e) => {
@@ -822,6 +801,39 @@
             });
         }
 
+        // Render status section with action buttons
+        function renderStatusSection(record) {
+            statusSection.innerHTML = `
+                <div class="status-section">
+                    <h3>Update Status</h3>
+                    <div class="status-options">
+                        <div class="status-option accepted ${selectedStatus === 'accepted' ? 'selected' : ''}" data-status="accepted">
+                            <span class="status-option-label">Accepted</span>
+                        </div>
+                        <div class="status-option referred ${selectedStatus === 'referred' ? 'selected' : ''}" data-status="referred">
+                            <span class="status-option-label">Referred</span>
+                        </div>
+                        <div class="status-option rejected ${selectedStatus === 'rejected' ? 'selected' : ''}" data-status="rejected">
+                            <span class="status-option-label">Rejected</span>
+                        </div>
+                    </div>
+                    <div class="action-buttons">
+                        <button class="btn btn-secondary" onclick="window.location.href='/admin/dashboard'">Cancel</button>
+                        <button class="btn btn-primary" id="saveButton" onclick="saveRecord()">Save Changes</button>
+                    </div>
+                </div>
+            `;
+
+            // Add click handlers for status options
+            document.querySelectorAll('.status-option').forEach(option => {
+                option.addEventListener('click', () => {
+                    document.querySelectorAll('.status-option').forEach(opt => opt.classList.remove('selected'));
+                    option.classList.add('selected');
+                    selectedStatus = option.dataset.status;
+                });
+            });
+        }
+
         // Update the record title when name changes
         function updateTitle() {
             const firstName = document.getElementById('firstName').value;
@@ -907,6 +919,7 @@
                 selectedStatus = currentRecord.status;
                 renderRecord(currentRecord);
                 renderFamilySection(currentRecord);
+                renderStatusSection(currentRecord);
 
                 // Hide success message after 3 seconds
                 setTimeout(() => {
