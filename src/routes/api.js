@@ -15,7 +15,14 @@ const {
 } = require('../validation/validator');
 
 // Use SQL repository for persistent storage
-const repository = new SQLRepository();
+let repository = null;
+
+function getRepository() {
+    if (!repository) {
+        repository = new SQLRepository();
+    }
+    return repository;
+}
 
 /**
  * Get questionnaire questions
@@ -179,6 +186,7 @@ router.get('/questions', (req, res) => {
  */
 router.post('/submit', (req, res) => {
     try {
+        const repo = getRepository();
         const rawData = req.body;
         
         // Separate user and profile data
@@ -221,8 +229,8 @@ router.post('/submit', (req, res) => {
             });
         }
         
-        // Check if email already exists
-        if (repository.emailExists(sanitizedUserData.email)) {
+        // Check if email already exists BEFORE any other database operations
+        if (repo.emailExists(sanitizedUserData.email)) {
             return res.status(400).json({ 
                 error: 'Validation failed',
                 details: [{ field: 'email', message: 'This email address is already registered' }]
@@ -285,11 +293,12 @@ router.post('/submit', (req, res) => {
         
         // Create and save user (with encrypted fields)
         const user = User.fromDict(sanitizedUserData);
-        const userId = repository.saveUser(user);
+        const userId = repo.saveUser(user);
         
         // Save family members
         if (familyMembers.length > 0) {
-            repository.saveFamilyMembers(userId, familyMembers.map(fm => FamilyMember.fromDict(fm)));
+            const familyMemberObjects = familyMembers.map(fm => FamilyMember.fromDict(fm));
+            repo.saveFamilyMembers(userId, familyMemberObjects);
         }
         
         // Create profile and save to database
@@ -297,14 +306,14 @@ router.post('/submit', (req, res) => {
             ...sanitizedProfileData,
             userId: userId
         });
-        const profileId = repository.saveProfile(profile);
+        const profileId = repo.saveProfile(profile);
         
         // Determine eligibility
         const result = determineEligibility(profile);
-        repository.saveResult(profileId, result);
+        repo.saveResult(profileId, result);
         
         // Get saved family members for response
-        const savedFamilyMembers = repository.getFamilyMembersByUserId(userId);
+        const savedFamilyMembers = repo.getFamilyMembersByUserId(userId);
         
         res.json({
             profileId: profileId,
@@ -317,7 +326,7 @@ router.post('/submit', (req, res) => {
         console.error('Error processing submission:', error);
         
         // Check for database constraint violations
-        if (error.message && error.message.includes('UNIQUE constraint failed')) {
+        if (error.message && (error.message.includes('UNIQUE constraint failed') || error.message.includes('email_hash'))) {
             return res.status(400).json({ 
                 error: 'This email address is already registered',
                 details: [{ field: 'email', message: 'This email address is already registered' }]
@@ -341,13 +350,14 @@ router.get('/plans', (req, res) => {
  */
 router.get('/result/:profileId', (req, res) => {
     try {
+        const repo = getRepository();
         const profileId = parseInt(req.params.profileId);
         
         if (isNaN(profileId) || profileId < 1) {
             return res.status(400).json({ error: 'Invalid profile ID' });
         }
         
-        const result = repository.getResult(profileId);
+        const result = repo.getResult(profileId);
         
         if (!result) {
             return res.status(404).json({ error: 'Result not found' });
@@ -365,13 +375,14 @@ router.get('/result/:profileId', (req, res) => {
  */
 router.get('/profile/:profileId', (req, res) => {
     try {
+        const repo = getRepository();
         const profileId = parseInt(req.params.profileId);
         
         if (isNaN(profileId) || profileId < 1) {
             return res.status(400).json({ error: 'Invalid profile ID' });
         }
         
-        const profile = repository.getProfile(profileId);
+        const profile = repo.getProfile(profileId);
         
         if (!profile) {
             return res.status(404).json({ error: 'Profile not found' });
@@ -389,13 +400,14 @@ router.get('/profile/:profileId', (req, res) => {
  */
 router.get('/user/:userId/family', (req, res) => {
     try {
+        const repo = getRepository();
         const userId = parseInt(req.params.userId);
         
         if (isNaN(userId) || userId < 1) {
             return res.status(400).json({ error: 'Invalid user ID' });
         }
         
-        const familyMembers = repository.getFamilyMembersByUserId(userId);
+        const familyMembers = repo.getFamilyMembersByUserId(userId);
         
         res.json(familyMembers.map(fm => fm.toDict()));
     } catch (error) {
@@ -409,7 +421,8 @@ router.get('/user/:userId/family', (req, res) => {
  */
 router.get('/profiles', (req, res) => {
     try {
-        const profiles = repository.getAllProfiles();
+        const repo = getRepository();
+        const profiles = repo.getAllProfiles();
         res.json(profiles.map(p => p.toDict()));
     } catch (error) {
         console.error('Error fetching profiles:', error);
