@@ -316,16 +316,16 @@
             recordsBody.innerHTML = filteredRecords.map(record => `
                 <tr>
                     <td>${record.id}</td>
-                    <td>${escapeHtml(record.first_name || '')} ${escapeHtml(record.last_name || '')}</td>
+                    <td>${escapeHtml(record.firstName || '')} ${escapeHtml(record.lastName || '')}</td>
                     <td>${escapeHtml(record.email || '')}</td>
                     <td>${escapeHtml(record.postcode || '')}</td>
                     <td>${record.age || '-'}</td>
-                    <td>${record.annual_income ? '£' + Number(record.annual_income).toLocaleString() : '-'}</td>
-                    <td>${escapeHtml(record.employment_status || '-')}</td>
-                    <td class="${record.has_preexisting_conditions ? 'boolean-yes' : 'boolean-no'}">${formatBoolean(record.has_preexisting_conditions)}</td>
-                    <td class="${record.is_smoker ? 'boolean-yes' : 'boolean-no'}">${formatBoolean(record.is_smoker)}</td>
+                    <td>${formatIncome(record.annualIncome)}</td>
+                    <td>${escapeHtml(record.employmentStatus || '-')}</td>
+                    <td class="${getBooleanClass(record.hasPreexistingConditions)}">${formatBoolean(record.hasPreexistingConditions)}</td>
+                    <td class="${getBooleanClass(record.isSmoker)}">${formatBoolean(record.isSmoker)}</td>
                     <td><span class="status-badge status-${record.status || 'pending'}">${record.status || 'pending'}</span></td>
-                    <td>${formatDate(record.created_at)}</td>
+                    <td>${formatDate(record.createdAt)}</td>
                 </tr>
             `).join('');
         }
@@ -335,6 +335,18 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        // Helper function to format income
+        function formatIncome(value) {
+            if (value === null || value === undefined) return '-';
+            return '£' + Number(value).toLocaleString();
+        }
+
+        // Helper function to get boolean class
+        function getBooleanClass(value) {
+            if (value === null || value === undefined) return '';
+            return value ? 'boolean-yes' : 'boolean-no';
         }
 
         // Helper function to format boolean values
