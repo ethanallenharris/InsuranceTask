@@ -1,9 +1,24 @@
 const nodemailer = require('nodemailer');
 
 // Configure transporter - uses environment variables for configuration
-// For production, set EMAIL_HOST, EMAIL_PORT, EMAIL_USER, EMAIL_PASS
-// For development/testing, it will use a test account or skip sending
+// For SendGrid: set SENDGRID_API_KEY
+// For other SMTP: set EMAIL_HOST, EMAIL_PORT, EMAIL_USER, EMAIL_PASS
+// For development/testing without config, it will log to console
 const createTransporter = () => {
+    // SendGrid configuration (recommended)
+    if (process.env.SENDGRID_API_KEY) {
+        return nodemailer.createTransport({
+            host: 'smtp.sendgrid.net',
+            port: 587,
+            secure: false,
+            auth: {
+                user: 'apikey',
+                pass: process.env.SENDGRID_API_KEY
+            }
+        });
+    }
+    
+    // Generic SMTP configuration
     if (process.env.EMAIL_HOST) {
         return nodemailer.createTransport({
             host: process.env.EMAIL_HOST,
@@ -34,6 +49,7 @@ async function sendProcessingConfirmationEmail(user, profile) {
     if (!transporter) {
         // Development mode - log to console
         console.log('=== EMAIL (Development Mode) ===');
+        console.log('To send real emails, set SENDGRID_API_KEY environment variable');
         console.log(`To: ${user.email}`);
         console.log(`Subject: ${emailContent.subject}`);
         console.log('Body:');
@@ -43,8 +59,10 @@ async function sendProcessingConfirmationEmail(user, profile) {
     }
     
     try {
+        const fromAddress = process.env.EMAIL_FROM || 'noreply@healthinsurance.example.com';
+        
         await transporter.sendMail({
-            from: process.env.EMAIL_FROM || '"Health Insurance Support" <noreply@healthinsurance.example.com>',
+            from: fromAddress,
             to: user.email,
             subject: emailContent.subject,
             text: emailContent.text,
