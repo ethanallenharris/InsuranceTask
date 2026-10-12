@@ -1,11 +1,12 @@
 const nodemailer = require('nodemailer');
 
 // Configure transporter - uses environment variables for configuration
+// For Gmail: set EMAIL_HOST=smtp.gmail.com, EMAIL_USER, EMAIL_PASS (app password)
 // For SendGrid: set SENDGRID_API_KEY
 // For other SMTP: set EMAIL_HOST, EMAIL_PORT, EMAIL_USER, EMAIL_PASS
 // For development/testing without config, it will log to console
 const createTransporter = () => {
-    // SendGrid configuration (recommended)
+    // SendGrid configuration
     if (process.env.SENDGRID_API_KEY) {
         return nodemailer.createTransport({
             host: 'smtp.sendgrid.net',
@@ -14,6 +15,17 @@ const createTransporter = () => {
             auth: {
                 user: 'apikey',
                 pass: process.env.SENDGRID_API_KEY
+            }
+        });
+    }
+    
+    // Gmail configuration (use with App Password)
+    if (process.env.EMAIL_HOST === 'smtp.gmail.com') {
+        return nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+                user: process.env.EMAIL_USER,
+                pass: process.env.EMAIL_PASS
             }
         });
     }
@@ -49,7 +61,10 @@ async function sendProcessingConfirmationEmail(user, profile) {
     if (!transporter) {
         // Development mode - log to console
         console.log('=== EMAIL (Development Mode) ===');
-        console.log('To send real emails, set SENDGRID_API_KEY environment variable');
+        console.log('To send real emails, configure Gmail:');
+        console.log('  EMAIL_HOST=smtp.gmail.com');
+        console.log('  EMAIL_USER=your.email@gmail.com');
+        console.log('  EMAIL_PASS=your-app-password');
         console.log(`To: ${user.email}`);
         console.log(`Subject: ${emailContent.subject}`);
         console.log('Body:');
@@ -59,7 +74,7 @@ async function sendProcessingConfirmationEmail(user, profile) {
     }
     
     try {
-        const fromAddress = process.env.EMAIL_FROM || 'noreply@healthinsurance.example.com';
+        const fromAddress = process.env.EMAIL_FROM || process.env.EMAIL_USER;
         
         await transporter.sendMail({
             from: fromAddress,
