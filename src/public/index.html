@@ -70,6 +70,26 @@
             color: #2d3748;
         }
         
+        .category-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75em;
+            font-weight: 600;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+        
+        .category-badge.registration {
+            background: #e8f4f8;
+            color: #005eb8;
+        }
+        
+        .category-badge.profile {
+            background: #d4edda;
+            color: #276749;
+        }
+        
         .progress-bar {
             height: 8px;
             background: #e2e8f0;
@@ -85,7 +105,8 @@
         }
         
         input[type="number"],
-        input[type="text"] {
+        input[type="text"],
+        input[type="email"] {
             width: 100%;
             padding: 12px;
             font-size: 1.1em;
@@ -106,6 +127,13 @@
         .error-message {
             color: #e53e3e;
             font-size: 0.9em;
+            margin-top: -15px;
+            margin-bottom: 15px;
+        }
+        
+        .field-hint {
+            color: #718096;
+            font-size: 0.85em;
             margin-top: -15px;
             margin-bottom: 15px;
         }
@@ -370,6 +398,39 @@
         .profile-id strong {
             color: #005eb8;
         }
+        
+        .welcome-message {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            border-radius: 0 8px 8px 0;
+            margin-bottom: 20px;
+        }
+        
+        .welcome-message h3 {
+            margin: 0 0 5px 0;
+            color: #276749;
+        }
+        
+        .welcome-message p {
+            margin: 0;
+            color: #2d3748;
+        }
+        
+        .privacy-note {
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 12px;
+            margin-top: -10px;
+            margin-bottom: 20px;
+            font-size: 0.85em;
+            color: #718096;
+        }
+        
+        .privacy-note strong {
+            color: #4a5568;
+        }
     </style>
 </head>
 <body>
@@ -428,6 +489,13 @@
             updateProgress();
             
             let inputHtml = '';
+            let categoryBadge = '';
+            
+            // Show category badge
+            if (q.category) {
+                const categoryLabel = q.category === 'registration' ? 'Registration' : 'Your Details';
+                categoryBadge = `<span class="category-badge ${q.category}">${categoryLabel}</span>`;
+            }
             
             switch (q.type) {
                 case 'number':
@@ -437,7 +505,7 @@
                             <input type="number" id="answer" 
                                 min="${q.min || ''}" 
                                 max="${q.max || ''}" 
-                                placeholder="${isCurrency ? 'Enter amount' : 'Enter a number'}"
+                                placeholder="${q.placeholder || (isCurrency ? 'Enter amount' : 'Enter a number')}"
                                 value="${answers[q.id] !== undefined ? answers[q.id] : ''}"
                                 step="${isCurrency ? '0.01' : '1'}">
                         </div>
@@ -448,8 +516,21 @@
                     inputHtml = `
                         <input type="text" id="answer" 
                             maxlength="${q.maxLength || ''}" 
-                            placeholder="Enter your answer"
+                            placeholder="${q.placeholder || 'Enter your answer'}"
                             value="${answers[q.id] || ''}">
+                    `;
+                    if (q.id === 'postcode') {
+                        inputHtml += '<p class="field-hint">Enter a valid UK postcode</p>';
+                    }
+                    break;
+                    
+                case 'email':
+                    inputHtml = `
+                        <input type="email" id="answer" 
+                            maxlength="${q.maxLength || 254}" 
+                            placeholder="your.email@example.com"
+                            value="${answers[q.id] || ''}">
+                        <p class="field-hint">We'll use this to send your quote</p>
                     `;
                     break;
                     
@@ -479,12 +560,25 @@
                     break;
             }
             
-            // Only show Next button for number and text inputs
-            const showNextButton = q.type === 'number' || q.type === 'text';
+            // Show privacy note for registration fields
+            let privacyNote = '';
+            if (q.category === 'registration' && currentQuestion === 0) {
+                privacyNote = `
+                    <div class="privacy-note">
+                        <strong>🔒 Your privacy matters:</strong> Your personal information is encrypted and stored securely. 
+                        We will never share your details with third parties without your consent.
+                    </div>
+                `;
+            }
+            
+            // Only show Next button for number, text, and email inputs
+            const showNextButton = q.type === 'number' || q.type === 'text' || q.type === 'email';
             
             const html = `
                 <div class="question-card active">
+                    ${categoryBadge}
                     <p class="question-text">${currentQuestion + 1}. ${q.question}</p>
+                    ${privacyNote}
                     ${inputHtml}
                     <div class="nav-buttons">
                         <button class="btn btn-secondary" 
@@ -529,21 +623,57 @@
         function validateCurrentAnswer() {
             const q = questions[currentQuestion];
             
-            if (q.type === 'number' || q.type === 'text') {
+            if (q.type === 'number') {
                 const input = document.getElementById('answer');
-                const value = q.type === 'number' ? parseFloat(input.value) : input.value;
+                const value = parseFloat(input.value);
                 
-                if (q.required && (input.value === '' || (q.type === 'number' && isNaN(value)))) {
-                    return { valid: false, message: 'Please enter a valid answer' };
+                if (q.required && (input.value === '' || isNaN(value))) {
+                    return { valid: false, message: 'Please enter a valid number' };
                 }
                 
-                if (q.type === 'number') {
-                    if (q.min !== undefined && value < q.min) {
-                        return { valid: false, message: `Value must be at least ${q.min}` };
+                if (q.min !== undefined && value < q.min) {
+                    return { valid: false, message: `Value must be at least ${q.min}` };
+                }
+                if (q.max !== undefined && value > q.max) {
+                    return { valid: false, message: `Value must be at most ${q.max}` };
+                }
+                
+                return { valid: true, value: value };
+            } else if (q.type === 'text') {
+                const input = document.getElementById('answer');
+                const value = input.value.trim();
+                
+                if (q.required && value === '') {
+                    return { valid: false, message: 'Please enter a value' };
+                }
+                
+                // Postcode validation
+                if (q.id === 'postcode' && value) {
+                    const postcodeRegex = /^([A-Z]{1,2}[0-9][A-Z0-9]? ?[0-9][A-Z]{2}|GIR ?0AA)$/i;
+                    if (!postcodeRegex.test(value)) {
+                        return { valid: false, message: 'Please enter a valid UK postcode' };
                     }
-                    if (q.max !== undefined && value > q.max) {
-                        return { valid: false, message: `Value must be at most ${q.max}` };
+                }
+                
+                // Name validation
+                if ((q.id === 'firstName' || q.id === 'lastName') && value) {
+                    if (!/^[a-zA-Z\s\-']+$/.test(value)) {
+                        return { valid: false, message: 'Name contains invalid characters' };
                     }
+                }
+                
+                return { valid: true, value: value };
+            } else if (q.type === 'email') {
+                const input = document.getElementById('answer');
+                const value = input.value.trim();
+                
+                if (q.required && value === '') {
+                    return { valid: false, message: 'Please enter your email address' };
+                }
+                
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(value)) {
+                    return { valid: false, message: 'Please enter a valid email address' };
                 }
                 
                 return { valid: true, value: value };
@@ -596,7 +726,7 @@
                 const data = await response.json();
                 
                 if (response.ok) {
-                    displayResults(data.result, data.profileId);
+                    displayResults(data.result, data.profileId, data.user);
                 } else {
                     if (data.details && Array.isArray(data.details)) {
                         displayValidationErrors(data.details);
@@ -638,11 +768,23 @@
             renderQuestion();
         }
         
-        function displayResults(result, profileId) {
+        function displayResults(result, profileId, user) {
             document.getElementById('questionsContainer').style.display = 'none';
             document.querySelector('.progress-bar').style.display = 'none';
             
-            let html = '<h2>Your Private Health Insurance Options</h2>';
+            let html = '';
+            
+            // Welcome message with user's name
+            if (user && user.firstName) {
+                html += `
+                    <div class="welcome-message">
+                        <h3>Thank you, ${user.firstName}!</h3>
+                        <p>Here are your personalised health insurance options.</p>
+                    </div>
+                `;
+            }
+            
+            html += '<h2>Your Private Health Insurance Options</h2>';
             
             // Profile ID reference
             if (profileId) {

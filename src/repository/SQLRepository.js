@@ -1,7 +1,9 @@
 const { getConnection, saveDatabase } = require('../database/connection');
+const User = require('../models/User');
 const UserProfile = require('../models/UserProfile');
 const EligibilityResult = require('../models/EligibilityResult');
 const InsurancePlan = require('../models/InsurancePlan');
+const { encrypt, decrypt, hashEmail } = require('../utils/encryption');
 
 /**
  * SQL-based repository for persistent storage
@@ -12,6 +14,110 @@ class SQLRepository {
     }
 
     /**
+     * Save a user to the database with encrypted fields
+     * @param {User} user
+     * @returns {number} The user ID
+     */
+    saveUser(user) {
+        const stmt = this.db.prepare(`
+            INSERT INTO users (
+                first_name_encrypted, last_name_encrypted, 
+                email_encrypted, email_hash, postcode_encrypted
+            ) VALUES (?, ?, ?, ?, ?)
+        `);
+
+        const emailHash = hashEmail(user.email);
+
+        stmt.run([
+            encrypt(user.firstName),
+            encrypt(user.lastName),
+            encrypt(user.email),
+            emailHash,
+            encrypt(user.postcode)
+        ]);
+
+        stmt.free();
+
+        // Get the last inserted ID
+        const result = this.db.exec('SELECT last_insert_rowid() as id');
+        const userId = result[0].values[0][0];
+        
+        user.id = userId;
+        
+        // Save to file
+        saveDatabase();
+        
+        return userId;
+    }
+
+    /**
+     * Get a user by ID with decrypted fields
+     * @param {number} userId
+     * @returns {User|null}
+     */
+    getUser(userId) {
+        const stmt = this.db.prepare('SELECT * FROM users WHERE id = ?');
+        stmt.bind([userId]);
+
+        if (!stmt.step()) {
+            stmt.free();
+            return null;
+        }
+
+        const row = stmt.getAsObject();
+        stmt.free();
+
+        return new User({
+            id: row.id,
+            firstName: decrypt(row.first_name_encrypted),
+            lastName: decrypt(row.last_name_encrypted),
+            email: decrypt(row.email_encrypted),
+            postcode: decrypt(row.postcode_encrypted)
+        });
+    }
+
+    /**
+     * Check if email already exists
+     * @param {string} email
+     * @returns {boolean}
+     */
+    emailExists(email) {
+        const emailHash = hashEmail(email);
+        const stmt = this.db.prepare('SELECT 1 FROM users WHERE email_hash = ?');
+        stmt.bind([emailHash]);
+        const exists = stmt.step();
+        stmt.free();
+        return exists;
+    }
+
+    /**
+     * Get user by email
+     * @param {string} email
+     * @returns {User|null}
+     */
+    getUserByEmail(email) {
+        const emailHash = hashEmail(email);
+        const stmt = this.db.prepare('SELECT * FROM users WHERE email_hash = ?');
+        stmt.bind([emailHash]);
+
+        if (!stmt.step()) {
+            stmt.free();
+            return null;
+        }
+
+        const row = stmt.getAsObject();
+        stmt.free();
+
+        return new User({
+            id: row.id,
+            firstName: decrypt(row.first_name_encrypted),
+            lastName: decrypt(row.last_name_encrypted),
+            email: decrypt(row.email_encrypted),
+            postcode: decrypt(row.postcode_encrypted)
+        });
+    }
+
+    /**
      * Save a user profile to the database
      * @param {UserProfile} profile
      * @returns {number} The profile ID
@@ -19,14 +125,15 @@ class SQLRepository {
     saveProfile(profile) {
         const stmt = this.db.prepare(`
             INSERT INTO user_profiles (
-                age, annual_income, employment_status, household_size,
+                user_id, age, annual_income, employment_status, household_size,
                 has_preexisting_conditions, is_smoker, region,
                 has_nhs_dentist, wants_private_dental, wants_outpatient_cover,
                 wants_mental_health_cover
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
 
         stmt.run([
+            profile.userId,
             profile.age,
             profile.annualIncome,
             profile.employmentStatus,
@@ -73,6 +180,7 @@ class SQLRepository {
 
         return new UserProfile({
             id: row.id,
+            userId: row.user_id,
             age: row.age,
             annualIncome: row.annual_income,
             employmentStatus: row.employment_status,
@@ -209,6 +317,7 @@ class SQLRepository {
 
             return new UserProfile({
                 id: obj.id,
+                userId: obj.user_id,
                 age: obj.age,
                 annualIncome: obj.annual_income,
                 employmentStatus: obj.employment_status,

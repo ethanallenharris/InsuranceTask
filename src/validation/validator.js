@@ -38,6 +38,61 @@ const VALID_REGIONS = [
     'North West', 'North East', 'Scotland', 'Wales', 'Northern Ireland'
 ];
 
+// UK postcode regex pattern
+const UK_POSTCODE_REGEX = /^([A-Z]{1,2}[0-9][A-Z0-9]? ?[0-9][A-Z]{2}|GIR ?0AA)$/i;
+
+// Email regex pattern
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * Validate user registration data
+ * @param {Object} data - Raw input data
+ * @returns {ValidationResult}
+ */
+function validateUserData(data) {
+    const result = new ValidationResult();
+
+    // First name validation
+    if (!data.firstName || typeof data.firstName !== 'string') {
+        result.addError('firstName', 'First name is required');
+    } else if (data.firstName.trim().length < 1) {
+        result.addError('firstName', 'First name cannot be empty');
+    } else if (data.firstName.trim().length > 50) {
+        result.addError('firstName', 'First name must be less than 50 characters');
+    } else if (!/^[a-zA-Z\s\-']+$/.test(data.firstName.trim())) {
+        result.addError('firstName', 'First name contains invalid characters');
+    }
+
+    // Last name validation
+    if (!data.lastName || typeof data.lastName !== 'string') {
+        result.addError('lastName', 'Last name is required');
+    } else if (data.lastName.trim().length < 1) {
+        result.addError('lastName', 'Last name cannot be empty');
+    } else if (data.lastName.trim().length > 50) {
+        result.addError('lastName', 'Last name must be less than 50 characters');
+    } else if (!/^[a-zA-Z\s\-']+$/.test(data.lastName.trim())) {
+        result.addError('lastName', 'Last name contains invalid characters');
+    }
+
+    // Email validation
+    if (!data.email || typeof data.email !== 'string') {
+        result.addError('email', 'Email is required');
+    } else if (!EMAIL_REGEX.test(data.email.trim())) {
+        result.addError('email', 'Please enter a valid email address');
+    } else if (data.email.trim().length > 254) {
+        result.addError('email', 'Email address is too long');
+    }
+
+    // Postcode validation
+    if (!data.postcode || typeof data.postcode !== 'string') {
+        result.addError('postcode', 'Postcode is required');
+    } else if (!UK_POSTCODE_REGEX.test(data.postcode.trim())) {
+        result.addError('postcode', 'Please enter a valid UK postcode');
+    }
+
+    return result;
+}
+
 /**
  * Validate user profile data
  * @param {Object} data - Raw input data
@@ -138,6 +193,20 @@ function sanitizeString(input) {
 }
 
 /**
+ * Sanitize user registration data
+ * @param {Object} data
+ * @returns {Object}
+ */
+function sanitizeUserData(data) {
+    return {
+        firstName: sanitizeString(data.firstName),
+        lastName: sanitizeString(data.lastName),
+        email: data.email ? data.email.toLowerCase().trim().slice(0, 254) : data.email,
+        postcode: data.postcode ? data.postcode.toUpperCase().trim().replace(/\s+/g, ' ') : data.postcode
+    };
+}
+
+/**
  * Sanitize profile data
  * @param {Object} data
  * @returns {Object}
@@ -161,8 +230,10 @@ function sanitizeProfileData(data) {
 module.exports = {
     ValidationError,
     ValidationResult,
+    validateUserData,
     validateProfileData,
     sanitizeString,
+    sanitizeUserData,
     sanitizeProfileData,
     VALID_EMPLOYMENT_STATUSES,
     VALID_REGIONS

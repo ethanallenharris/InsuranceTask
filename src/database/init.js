@@ -17,10 +17,25 @@ async function initializeDatabase() {
     // Enable foreign keys
     db.run('PRAGMA foreign_keys = ON');
 
+    // Create users table with encrypted fields
+    db.run(`
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            first_name_encrypted TEXT NOT NULL,
+            last_name_encrypted TEXT NOT NULL,
+            email_encrypted TEXT NOT NULL,
+            email_hash TEXT NOT NULL UNIQUE,
+            postcode_encrypted TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
     // Create tables
     db.run(`
         CREATE TABLE IF NOT EXISTS user_profiles (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
             age INTEGER NOT NULL CHECK(age >= 18 AND age <= 120),
             annual_income REAL NOT NULL CHECK(annual_income >= 0),
             employment_status TEXT NOT NULL CHECK(employment_status IN ('Employed', 'Self-employed', 'Unemployed', 'Retired', 'Student')),
@@ -33,7 +48,8 @@ async function initializeDatabase() {
             wants_outpatient_cover INTEGER NOT NULL CHECK(wants_outpatient_cover IN (0, 1)),
             wants_mental_health_cover INTEGER NOT NULL CHECK(wants_mental_health_cover IN (0, 1)),
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         )
     `);
 
@@ -84,6 +100,8 @@ async function initializeDatabase() {
     insertRegion.free();
 
     // Create indexes
+    db.run('CREATE INDEX IF NOT EXISTS idx_users_email_hash ON users(email_hash)');
+    db.run('CREATE INDEX IF NOT EXISTS idx_profiles_user ON user_profiles(user_id)');
     db.run('CREATE INDEX IF NOT EXISTS idx_profiles_region ON user_profiles(region)');
     db.run('CREATE INDEX IF NOT EXISTS idx_profiles_age ON user_profiles(age)');
     db.run('CREATE INDEX IF NOT EXISTS idx_results_profile ON eligibility_results(profile_id)');

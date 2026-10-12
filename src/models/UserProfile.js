@@ -5,6 +5,8 @@
 class UserProfile {
     /**
      * @param {Object} data
+     * @param {number|null} data.id
+     * @param {number|null} data.userId
      * @param {number|null} data.age
      * @param {number|null} data.annualIncome
      * @param {string|null} data.employmentStatus
@@ -19,6 +21,7 @@ class UserProfile {
      */
     constructor(data = {}) {
         this.id = data.id || null;
+        this.userId = data.userId || null;
         this.age = data.age || null;
         this.annualIncome = data.annualIncome || null;
         this.employmentStatus = data.employmentStatus || null;
@@ -35,6 +38,7 @@ class UserProfile {
     toDict() {
         return {
             id: this.id,
+            userId: this.userId,
             age: this.age,
             annualIncome: this.annualIncome,
             employmentStatus: this.employmentStatus,
