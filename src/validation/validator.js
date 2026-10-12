@@ -32,12 +32,6 @@ class ValidationResult {
 
 const VALID_EMPLOYMENT_STATUSES = ['Employed', 'Self-employed', 'Unemployed', 'Retired', 'Student'];
 
-const VALID_REGIONS = [
-    'London', 'South East', 'South West', 'East of England',
-    'West Midlands', 'East Midlands', 'Yorkshire and the Humber',
-    'North West', 'North East', 'Scotland', 'Wales', 'Northern Ireland'
-];
-
 const VALID_RELATIONSHIPS = ['spouse', 'child'];
 
 // UK postcode regex pattern
@@ -144,13 +138,6 @@ function validateProfileData(data) {
         result.addError('employmentStatus', 'Employment status is required');
     } else if (!VALID_EMPLOYMENT_STATUSES.includes(data.employmentStatus)) {
         result.addError('employmentStatus', `Employment status must be one of: ${VALID_EMPLOYMENT_STATUSES.join(', ')}`);
-    }
-
-    // Region validation
-    if (!data.region) {
-        result.addError('region', 'Region is required');
-    } else if (!VALID_REGIONS.includes(data.region)) {
-        result.addError('region', `Region must be a valid UK region`);
     }
 
     // Boolean field validations
@@ -304,7 +291,6 @@ function sanitizeProfileData(data) {
         annualIncome: typeof data.annualIncome === 'number' ? Math.round(data.annualIncome * 100) / 100 : data.annualIncome,
         householdSize: typeof data.householdSize === 'number' ? Math.floor(data.householdSize) : data.householdSize,
         employmentStatus: sanitizeString(data.employmentStatus),
-        region: sanitizeString(data.region),
         hasPreexistingConditions: Boolean(data.hasPreexistingConditions),
         isSmoker: Boolean(data.isSmoker),
         hasNhsDentist: data.hasNhsDentist === undefined ? null : Boolean(data.hasNhsDentist),
@@ -340,6 +326,5 @@ module.exports = {
     sanitizeProfileData,
     sanitizeFamilyMemberData,
     VALID_EMPLOYMENT_STATUSES,
-    VALID_REGIONS,
     VALID_RELATIONSHIPS
 };

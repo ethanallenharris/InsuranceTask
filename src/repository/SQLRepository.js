@@ -274,10 +274,10 @@ class SQLRepository {
         const stmt = this.db.prepare(`
             INSERT INTO user_profiles (
                 user_id, age, annual_income, employment_status, household_size,
-                has_preexisting_conditions, is_smoker, region,
+                has_preexisting_conditions, is_smoker,
                 has_nhs_dentist, wants_private_dental, wants_outpatient_cover,
                 wants_mental_health_cover
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
 
         stmt.run([
@@ -288,7 +288,6 @@ class SQLRepository {
             profile.householdSize,
             profile.hasPreexistingConditions ? 1 : 0,
             profile.isSmoker ? 1 : 0,
-            profile.region,
             profile.hasNhsDentist === null ? null : (profile.hasNhsDentist ? 1 : 0),
             profile.wantsPrivateDental ? 1 : 0,
             profile.wantsOutpatientCover ? 1 : 0,
@@ -343,7 +342,6 @@ class SQLRepository {
             householdSize: row.household_size,
             hasPreexistingConditions: row.has_preexisting_conditions === 1,
             isSmoker: row.is_smoker === 1,
-            region: row.region,
             hasNhsDentist: row.has_nhs_dentist === null ? null : row.has_nhs_dentist === 1,
             wantsPrivateDental: row.wants_private_dental === 1,
             wantsOutpatientCover: row.wants_outpatient_cover === 1,
@@ -480,7 +478,6 @@ class SQLRepository {
                 householdSize: obj.household_size,
                 hasPreexistingConditions: obj.has_preexisting_conditions === 1,
                 isSmoker: obj.is_smoker === 1,
-                region: obj.region,
                 hasNhsDentist: obj.has_nhs_dentist === null ? null : obj.has_nhs_dentist === 1,
                 wantsPrivateDental: obj.wants_private_dental === 1,
                 wantsOutpatientCover: obj.wants_outpatient_cover === 1,

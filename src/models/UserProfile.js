@@ -12,7 +12,6 @@ class UserProfile {
      * @param {number|null} data.householdSize
      * @param {boolean|null} data.hasPreexistingConditions
      * @param {boolean|null} data.isSmoker
-     * @param {string|null} data.region
      * @param {boolean|null} data.hasNhsDentist
      * @param {boolean|null} data.wantsPrivateDental
      * @param {boolean|null} data.wantsOutpatientCover
@@ -29,7 +28,6 @@ class UserProfile {
         this.householdSize = data.householdSize || null;
         this.hasPreexistingConditions = data.hasPreexistingConditions || null;
         this.isSmoker = data.isSmoker || null;
-        this.region = data.region || null;
         this.hasNhsDentist = data.hasNhsDentist !== undefined ? data.hasNhsDentist : null;
         this.wantsPrivateDental = data.wantsPrivateDental || null;
         this.wantsOutpatientCover = data.wantsOutpatientCover || null;
@@ -48,7 +46,6 @@ class UserProfile {
             householdSize: this.householdSize,
             hasPreexistingConditions: this.hasPreexistingConditions,
             isSmoker: this.isSmoker,
-            region: this.region,
             hasNhsDentist: this.hasNhsDentist,
             wantsPrivateDental: this.wantsPrivateDental,
             wantsOutpatientCover: this.wantsOutpatientCover,
