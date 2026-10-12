@@ -32,7 +32,7 @@ async function initializeDatabase() {
         )
     `);
 
-    // Create tables
+    // Create user_profiles table (without region column)
     db.run(`
         CREATE TABLE IF NOT EXISTS user_profiles (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -49,6 +49,21 @@ async function initializeDatabase() {
             wants_mental_health_cover INTEGER NOT NULL CHECK(wants_mental_health_cover IN (0, 1)),
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    `);
+
+    // Create family_members table
+    db.run(`
+        CREATE TABLE IF NOT EXISTS family_members (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            relationship TEXT NOT NULL CHECK(relationship IN ('spouse', 'child')),
+            first_name_encrypted TEXT NOT NULL,
+            last_name_encrypted TEXT NOT NULL,
+            date_of_birth TEXT NOT NULL,
+            has_preexisting_conditions INTEGER NOT NULL DEFAULT 0 CHECK(has_preexisting_conditions IN (0, 1)),
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         )
     `);
@@ -86,6 +101,7 @@ async function initializeDatabase() {
     db.run('CREATE INDEX IF NOT EXISTS idx_profiles_user ON user_profiles(user_id)');
     db.run('CREATE INDEX IF NOT EXISTS idx_profiles_age ON user_profiles(age)');
     db.run('CREATE INDEX IF NOT EXISTS idx_results_profile ON eligibility_results(profile_id)');
+    db.run('CREATE INDEX IF NOT EXISTS idx_family_members_user ON family_members(user_id)');
 
     // Save to file
     const data = db.export();
