@@ -443,11 +443,6 @@
 
         // Valid options
         const employmentOptions = ['Employed', 'Self-employed', 'Unemployed', 'Retired', 'Student'];
-        const regionOptions = [
-            'London', 'South East', 'South West', 'East of England',
-            'West Midlands', 'East Midlands', 'Yorkshire and the Humber',
-            'North West', 'North East', 'Scotland', 'Wales', 'Northern Ireland'
-        ];
 
         // DOM elements
         const recordCard = document.getElementById('recordCard');
@@ -483,10 +478,6 @@
                 `<option value="${opt}" ${record.employmentStatus === opt ? 'selected' : ''}>${opt}</option>`
             ).join('');
 
-            const regionOptionsHtml = regionOptions.map(opt => 
-                `<option value="${opt}" ${record.region === opt ? 'selected' : ''}>${opt}</option>`
-            ).join('');
-
             recordCard.innerHTML = `
                 <div class="record-header">
                     <div>
@@ -518,12 +509,6 @@
                             <div class="info-item">
                                 <label class="info-label" for="age">Age</label>
                                 <input type="number" id="age" class="form-input" min="18" max="120" value="${record.age || ''}" />
-                            </div>
-                            <div class="info-item">
-                                <label class="info-label" for="region">Region</label>
-                                <select id="region" class="form-select">
-                                    ${regionOptionsHtml}
-                                </select>
                             </div>
                         </div>
                     </div>
@@ -637,7 +622,6 @@
                 email: document.getElementById('email').value.trim(),
                 postcode: document.getElementById('postcode').value.trim(),
                 age: parseInt(document.getElementById('age').value) || null,
-                region: document.getElementById('region').value,
                 annualIncome: parseFloat(document.getElementById('annualIncome').value) || null,
                 employmentStatus: document.getElementById('employmentStatus').value,
                 householdSize: parseInt(document.getElementById('householdSize').value) || null,

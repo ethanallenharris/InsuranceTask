@@ -17,8 +17,7 @@ let dummyRecords = [
         employmentStatus: 'Employed', 
         householdSize: 2, 
         hasPreexistingConditions: false, 
-        isSmoker: false, 
-        region: 'London',
+        isSmoker: false,
         createdAt: '2024-01-15T10:30:00Z'
     },
     { 
@@ -33,8 +32,7 @@ let dummyRecords = [
         employmentStatus: 'Employed', 
         householdSize: 1, 
         hasPreexistingConditions: false, 
-        isSmoker: false, 
-        region: 'North West',
+        isSmoker: false,
         createdAt: '2024-01-14T14:20:00Z'
     },
     { 
@@ -49,8 +47,7 @@ let dummyRecords = [
         employmentStatus: 'Self-employed', 
         householdSize: 4, 
         hasPreexistingConditions: false, 
-        isSmoker: false, 
-        region: 'West Midlands',
+        isSmoker: false,
         createdAt: '2024-01-13T09:15:00Z'
     },
     { 
@@ -65,8 +62,7 @@ let dummyRecords = [
         employmentStatus: 'Employed', 
         householdSize: 3, 
         hasPreexistingConditions: false, 
-        isSmoker: false, 
-        region: 'North West',
+        isSmoker: false,
         createdAt: '2024-01-12T16:45:00Z'
     },
     { 
@@ -81,8 +77,7 @@ let dummyRecords = [
         employmentStatus: 'Employed', 
         householdSize: 2, 
         hasPreexistingConditions: true, 
-        isSmoker: false, 
-        region: 'London',
+        isSmoker: false,
         createdAt: '2024-01-11T11:00:00Z'
     },
     { 
@@ -97,8 +92,7 @@ let dummyRecords = [
         employmentStatus: 'Retired', 
         householdSize: 1, 
         hasPreexistingConditions: true, 
-        isSmoker: false, 
-        region: 'Scotland',
+        isSmoker: false,
         createdAt: '2024-01-10T13:30:00Z'
     },
     { 
@@ -113,8 +107,7 @@ let dummyRecords = [
         employmentStatus: 'Employed', 
         householdSize: 3, 
         hasPreexistingConditions: false, 
-        isSmoker: true, 
-        region: 'Wales',
+        isSmoker: true,
         createdAt: '2024-01-09T08:45:00Z'
     },
     { 
@@ -129,8 +122,7 @@ let dummyRecords = [
         employmentStatus: 'Self-employed', 
         householdSize: 2, 
         hasPreexistingConditions: true, 
-        isSmoker: false, 
-        region: 'Scotland',
+        isSmoker: false,
         createdAt: '2024-01-08T15:20:00Z'
     },
     { 
@@ -145,8 +137,7 @@ let dummyRecords = [
         employmentStatus: 'Retired', 
         householdSize: 1, 
         hasPreexistingConditions: true, 
-        isSmoker: true, 
-        region: 'Yorkshire and the Humber',
+        isSmoker: true,
         createdAt: '2024-01-07T10:10:00Z'
     },
     { 
@@ -161,8 +152,7 @@ let dummyRecords = [
         employmentStatus: 'Unemployed', 
         householdSize: 1, 
         hasPreexistingConditions: false, 
-        isSmoker: true, 
-        region: 'North East',
+        isSmoker: true,
         createdAt: '2024-01-06T12:00:00Z'
     },
     { 
@@ -177,8 +167,7 @@ let dummyRecords = [
         employmentStatus: 'Retired', 
         householdSize: 2, 
         hasPreexistingConditions: true, 
-        isSmoker: false, 
-        region: 'South West',
+        isSmoker: false,
         createdAt: '2024-01-05T09:30:00Z'
     },
     { 
@@ -193,8 +182,7 @@ let dummyRecords = [
         employmentStatus: 'Employed', 
         householdSize: 1, 
         hasPreexistingConditions: false, 
-        isSmoker: true, 
-        region: 'East Midlands',
+        isSmoker: true,
         createdAt: '2024-01-04T14:15:00Z'
     }
 ];
@@ -202,11 +190,6 @@ let dummyRecords = [
 // Valid options
 const VALID_STATUSES = ['accepted', 'rejected', 'referred'];
 const VALID_EMPLOYMENT_STATUSES = ['Employed', 'Self-employed', 'Unemployed', 'Retired', 'Student'];
-const VALID_REGIONS = [
-    'London', 'South East', 'South West', 'East of England',
-    'West Midlands', 'East Midlands', 'Yorkshire and the Humber',
-    'North West', 'North East', 'Scotland', 'Wales', 'Northern Ireland'
-];
 
 // Serve admin login page
 router.get('/', (req, res) => {
@@ -279,14 +262,6 @@ router.put('/api/records/:id', (req, res) => {
             });
         }
         
-        // Validate region if provided
-        if (updates.region && !VALID_REGIONS.includes(updates.region)) {
-            return res.status(400).json({ 
-                error: 'Invalid region', 
-                validRegions: VALID_REGIONS 
-            });
-        }
-        
         // Validate age if provided
         if (updates.age !== undefined && updates.age !== null) {
             const age = parseInt(updates.age);
@@ -322,7 +297,7 @@ router.put('/api/records/:id', (req, res) => {
         
         // Update allowed fields
         const allowedFields = [
-            'firstName', 'lastName', 'email', 'postcode', 'age', 'region',
+            'firstName', 'lastName', 'email', 'postcode', 'age',
             'annualIncome', 'employmentStatus', 'householdSize',
             'hasPreexistingConditions', 'isSmoker', 'status'
         ];
