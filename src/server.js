@@ -1,14 +1,14 @@
 const express = require('express');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 async function startServer() {
     // Initialize database
-    const { initDatabase, closeConnection } = require('./database/connection');
+    const { initDatabase, closeConnection, getConnection } = require('./database/connection');
     
-    const fs = require('fs');
     const dbPath = process.env.DB_PATH || path.join(__dirname, '../data/health_insurance.db');
     
     // Check if database exists, if not initialize it
@@ -21,6 +21,25 @@ async function startServer() {
     
     // Initialize database connection
     await initDatabase();
+    
+    // Check if database has the users table (schema migration check)
+    const db = getConnection();
+    const tableCheck = db.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='users'");
+    
+    if (tableCheck.length === 0 || tableCheck[0].values.length === 0) {
+        console.log('Database schema outdated, reinitializing...');
+        closeConnection();
+        
+        // Delete old database
+        if (fs.existsSync(dbPath)) {
+            fs.unlinkSync(dbPath);
+        }
+        
+        // Reinitialize
+        await require('./database/init');
+        await new Promise(resolve => setTimeout(resolve, 100));
+        await initDatabase();
+    }
     
     // Now load routes (after database is ready)
     const apiRoutes = require('./routes/api');
