@@ -43,7 +43,6 @@ async function initializeDatabase() {
             household_size INTEGER NOT NULL CHECK(household_size >= 1 AND household_size <= 20),
             has_preexisting_conditions INTEGER NOT NULL CHECK(has_preexisting_conditions IN (0, 1)),
             is_smoker INTEGER NOT NULL CHECK(is_smoker IN (0, 1)),
-            region TEXT NOT NULL,
             has_nhs_dentist INTEGER CHECK(has_nhs_dentist IN (0, 1, NULL)),
             wants_private_dental INTEGER NOT NULL CHECK(wants_private_dental IN (0, 1)),
             wants_outpatient_cover INTEGER NOT NULL CHECK(wants_outpatient_cover IN (0, 1)),
@@ -81,30 +80,10 @@ async function initializeDatabase() {
         )
     `);
 
-    db.run(`
-        CREATE TABLE IF NOT EXISTS valid_regions (
-            region TEXT PRIMARY KEY
-        )
-    `);
-
-    // Insert valid regions
-    const regions = [
-        'London', 'South East', 'South West', 'East of England',
-        'West Midlands', 'East Midlands', 'Yorkshire and the Humber',
-        'North West', 'North East', 'Scotland', 'Wales', 'Northern Ireland'
-    ];
-
-    const insertRegion = db.prepare('INSERT OR IGNORE INTO valid_regions (region) VALUES (?)');
-    regions.forEach(region => {
-        insertRegion.run([region]);
-    });
-    insertRegion.free();
-
     // Create indexes
     db.run('CREATE INDEX IF NOT EXISTS idx_users_email_hash ON users(email_hash)');
     db.run('CREATE INDEX IF NOT EXISTS idx_users_status ON users(status)');
     db.run('CREATE INDEX IF NOT EXISTS idx_profiles_user ON user_profiles(user_id)');
-    db.run('CREATE INDEX IF NOT EXISTS idx_profiles_region ON user_profiles(region)');
     db.run('CREATE INDEX IF NOT EXISTS idx_profiles_age ON user_profiles(age)');
     db.run('CREATE INDEX IF NOT EXISTS idx_results_profile ON eligibility_results(profile_id)');
 

@@ -82,14 +82,6 @@ router.get('/questions', (req, res) => {
             category: 'profile'
         },
         {
-            id: 'region',
-            type: 'choice',
-            question: 'Which region of the UK do you live in?',
-            options: ['London', 'South East', 'South West', 'East of England', 'West Midlands', 'East Midlands', 'Yorkshire and the Humber', 'North West', 'North East', 'Scotland', 'Wales', 'Northern Ireland'],
-            required: true,
-            category: 'profile'
-        },
-        {
             id: 'hasPreexistingConditions',
             type: 'boolean',
             question: 'Do you have any pre-existing health conditions?',
@@ -207,7 +199,6 @@ router.post('/submit', (req, res) => {
             annualIncome: rawData.annualIncome,
             householdSize: householdSize,
             employmentStatus: rawData.employmentStatus,
-            region: rawData.region,
             hasPreexistingConditions: rawData.hasPreexistingConditions,
             isSmoker: rawData.isSmoker,
             wantsOutpatientCover: rawData.wantsOutpatientCover,

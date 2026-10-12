@@ -178,7 +178,6 @@ This is an automated message. Please do not reply directly to this email.
                 <div class="detail-row"><span class="label">Annual Income:</span> £${profile.annualIncome.toLocaleString()}</div>
                 <div class="detail-row"><span class="label">Employment Status:</span> ${profile.employmentStatus}</div>
                 <div class="detail-row"><span class="label">Household Size:</span> ${profile.householdSize}</div>
-                <div class="detail-row"><span class="label">Region:</span> ${profile.region}</div>
                 <div class="detail-row"><span class="label">Pre-existing Conditions:</span> ${profile.hasPreexistingConditions ? 'Yes' : 'No'}</div>
                 <div class="detail-row"><span class="label">Smoker:</span> ${profile.isSmoker ? 'Yes' : 'No'}</div>
                 <div class="detail-row"><span class="label">Has NHS Dentist:</span> ${profile.hasNhsDentist === null ? 'Not specified' : (profile.hasNhsDentist ? 'Yes' : 'No')}</div>
@@ -225,7 +224,6 @@ function formatClaimDetails(user, profile) {
         `- Annual Income: £${profile.annualIncome.toLocaleString()}`,
         `- Employment Status: ${profile.employmentStatus}`,
         `- Household Size: ${profile.householdSize}`,
-        `- Region: ${profile.region}`,
         `- Pre-existing Conditions: ${profile.hasPreexistingConditions ? 'Yes' : 'No'}`,
         `- Smoker: ${profile.isSmoker ? 'Yes' : 'No'}`,
         `- Has NHS Dentist: ${profile.hasNhsDentist === null ? 'Not specified' : (profile.hasNhsDentist ? 'Yes' : 'No')}`,
