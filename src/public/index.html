@@ -459,7 +459,7 @@
                         const selected = answers[q.id] === option ? 'selected' : '';
                         inputHtml += `
                             <button class="option-btn ${selected}" 
-                                onclick="selectOption('${option.replace(/'/g, "\\'")}')">
+                                onclick="selectOptionAndAdvance('${option.replace(/'/g, "\\'")}')">
                                 ${option}
                             </button>
                         `;
@@ -471,13 +471,16 @@
                     inputHtml = `
                         <div class="boolean-container">
                             <button class="boolean-btn ${answers[q.id] === true ? 'selected' : ''}" 
-                                onclick="selectBoolean(true)">Yes</button>
+                                onclick="selectBooleanAndAdvance(true)">Yes</button>
                             <button class="boolean-btn ${answers[q.id] === false ? 'selected' : ''}" 
-                                onclick="selectBoolean(false)">No</button>
+                                onclick="selectBooleanAndAdvance(false)">No</button>
                         </div>
                     `;
                     break;
             }
+            
+            // Only show Next button for number and text inputs
+            const showNextButton = q.type === 'number' || q.type === 'text';
             
             const html = `
                 <div class="question-card active">
@@ -489,9 +492,11 @@
                             ${currentQuestion === 0 ? 'disabled' : ''}>
                             ← Back
                         </button>
-                        <button class="btn btn-primary" onclick="nextQuestion()">
-                            ${currentQuestion === questions.length - 1 ? 'Get Quotes' : 'Next →'}
-                        </button>
+                        ${showNextButton ? `
+                            <button class="btn btn-primary" onclick="nextQuestion()">
+                                ${currentQuestion === questions.length - 1 ? 'Get Quotes' : 'Next →'}
+                            </button>
+                        ` : ''}
                     </div>
                 </div>
             `;
@@ -507,15 +512,17 @@
             }
         }
         
-        function selectOption(option) {
+        function selectOptionAndAdvance(option) {
             const q = questions[currentQuestion];
             answers[q.id] = option;
+            currentQuestion++;
             renderQuestion();
         }
         
-        function selectBoolean(value) {
+        function selectBooleanAndAdvance(value) {
             const q = questions[currentQuestion];
             answers[q.id] = value;
+            currentQuestion++;
             renderQuestion();
         }
         
