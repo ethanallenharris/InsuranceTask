@@ -278,7 +278,7 @@ function getRecordsFromDatabase() {
         let familyMembers = {};
         try {
             const familyResult = db.exec(`
-                SELECT id, user_id, relationship, first_name, last_name, date_of_birth,
+                SELECT id, user_id, relationship, first_name_encrypted, last_name_encrypted, date_of_birth,
                        has_preexisting_conditions
                 FROM family_members
                 ORDER BY user_id, relationship, id
@@ -333,15 +333,15 @@ function getRecordsFromDatabase() {
                 updatedAt: user.updated_at,
                 spouse: spouse ? {
                     id: spouse.id,
-                    firstName: spouse.first_name,
-                    lastName: spouse.last_name,
+                    firstName: safeDecrypt(spouse.first_name_encrypted),
+                    lastName: safeDecrypt(spouse.last_name_encrypted),
                     dateOfBirth: spouse.date_of_birth,
                     hasPreexistingConditions: spouse.has_preexisting_conditions === 1
                 } : null,
                 children: children.map(child => ({
                     id: child.id,
-                    firstName: child.first_name,
-                    lastName: child.last_name,
+                    firstName: safeDecrypt(child.first_name_encrypted),
+                    lastName: safeDecrypt(child.last_name_encrypted),
                     dateOfBirth: child.date_of_birth,
                     hasPreexistingConditions: child.has_preexisting_conditions === 1
                 }))
@@ -364,18 +364,19 @@ function getRecordFromDatabase(id) {
 // Helper function to update family member in database
 function updateFamilyMemberInDatabase(memberId, updates) {
     const { getConnection, saveDatabase } = require('../database/connection');
+    const { encrypt } = require('../utils/encryption');
     const db = getConnection();
     
     const updateFields = [];
     const params = [];
     
     if (updates.firstName !== undefined) {
-        updateFields.push('first_name = ?');
-        params.push(updates.firstName);
+        updateFields.push('first_name_encrypted = ?');
+        params.push(encrypt(updates.firstName));
     }
     if (updates.lastName !== undefined) {
-        updateFields.push('last_name = ?');
-        params.push(updates.lastName);
+        updateFields.push('last_name_encrypted = ?');
+        params.push(encrypt(updates.lastName));
     }
     if (updates.dateOfBirth !== undefined) {
         updateFields.push('date_of_birth = ?');
@@ -401,7 +402,7 @@ function getFamilyMemberFromDatabase(memberId) {
     
     try {
         const result = db.exec(`
-            SELECT id, user_id, relationship, first_name, last_name, date_of_birth, has_preexisting_conditions
+            SELECT id, user_id, relationship, first_name_encrypted, last_name_encrypted, date_of_birth, has_preexisting_conditions
             FROM family_members
             WHERE id = ?
         `, [memberId]);
@@ -417,8 +418,8 @@ function getFamilyMemberFromDatabase(memberId) {
                 id: member.id,
                 userId: member.user_id,
                 relationship: member.relationship,
-                firstName: member.first_name,
-                lastName: member.last_name,
+                firstName: safeDecrypt(member.first_name_encrypted),
+                lastName: safeDecrypt(member.last_name_encrypted),
                 dateOfBirth: member.date_of_birth,
                 hasPreexistingConditions: member.has_preexisting_conditions === 1
             };
