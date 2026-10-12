@@ -99,6 +99,17 @@
             border-color: #005eb8;
         }
         
+        input.error {
+            border-color: #e53e3e;
+        }
+        
+        .error-message {
+            color: #e53e3e;
+            font-size: 0.9em;
+            margin-top: -15px;
+            margin-bottom: 15px;
+        }
+        
         .options-container {
             display: flex;
             flex-direction: column;
@@ -209,6 +220,11 @@
         .result-section.warning {
             background: #fef3cd;
             border-left: 4px solid #ffc107;
+        }
+        
+        .result-section.error {
+            background: #fee2e2;
+            border-left: 4px solid #e53e3e;
         }
         
         .result-section.recommendation {
@@ -322,6 +338,38 @@
             font-size: 1.1em;
             color: #718096;
         }
+        
+        .validation-errors {
+            background: #fee2e2;
+            border: 1px solid #e53e3e;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .validation-errors h4 {
+            color: #c53030;
+            margin: 0 0 10px 0;
+        }
+        
+        .validation-errors ul {
+            margin: 0;
+            padding-left: 20px;
+            color: #c53030;
+        }
+        
+        .profile-id {
+            background: #e8f4f8;
+            padding: 10px 15px;
+            border-radius: 6px;
+            font-size: 0.9em;
+            color: #4a5568;
+            margin-bottom: 20px;
+        }
+        
+        .profile-id strong {
+            color: #005eb8;
+        }
     </style>
 </head>
 <body>
@@ -390,7 +438,8 @@
                                 min="${q.min || ''}" 
                                 max="${q.max || ''}" 
                                 placeholder="${isCurrency ? 'Enter amount' : 'Enter a number'}"
-                                value="${answers[q.id] || ''}">
+                                value="${answers[q.id] !== undefined ? answers[q.id] : ''}"
+                                step="${isCurrency ? '0.01' : '1'}">
                         </div>
                     `;
                     break;
@@ -410,7 +459,7 @@
                         const selected = answers[q.id] === option ? 'selected' : '';
                         inputHtml += `
                             <button class="option-btn ${selected}" 
-                                onclick="selectOption('${option}')">
+                                onclick="selectOption('${option.replace(/'/g, "\\'")}')">
                                 ${option}
                             </button>
                         `;
@@ -470,7 +519,7 @@
             renderQuestion();
         }
         
-        function nextQuestion() {
+        function validateCurrentAnswer() {
             const q = questions[currentQuestion];
             
             if (q.type === 'number' || q.type === 'text') {
@@ -478,25 +527,37 @@
                 const value = q.type === 'number' ? parseFloat(input.value) : input.value;
                 
                 if (q.required && (input.value === '' || (q.type === 'number' && isNaN(value)))) {
-                    alert('Please enter a valid answer');
-                    return;
+                    return { valid: false, message: 'Please enter a valid answer' };
                 }
                 
                 if (q.type === 'number') {
                     if (q.min !== undefined && value < q.min) {
-                        alert(`Value must be at least ${q.min}`);
-                        return;
+                        return { valid: false, message: `Value must be at least ${q.min}` };
                     }
                     if (q.max !== undefined && value > q.max) {
-                        alert(`Value must be at most ${q.max}`);
-                        return;
+                        return { valid: false, message: `Value must be at most ${q.max}` };
                     }
                 }
                 
-                answers[q.id] = value;
+                return { valid: true, value: value };
             } else if (q.required && answers[q.id] === undefined) {
-                alert('Please select an option');
+                return { valid: false, message: 'Please select an option' };
+            }
+            
+            return { valid: true };
+        }
+        
+        function nextQuestion() {
+            const validation = validateCurrentAnswer();
+            
+            if (!validation.valid) {
+                alert(validation.message);
                 return;
+            }
+            
+            if (validation.value !== undefined) {
+                const q = questions[currentQuestion];
+                answers[q.id] = validation.value;
             }
             
             currentQuestion++;
@@ -528,23 +589,63 @@
                 const data = await response.json();
                 
                 if (response.ok) {
-                    displayResults(data.result);
+                    displayResults(data.result, data.profileId);
                 } else {
-                    throw new Error(data.error || 'Submission failed');
+                    if (data.details && Array.isArray(data.details)) {
+                        displayValidationErrors(data.details);
+                    } else {
+                        throw new Error(data.error || 'Submission failed');
+                    }
                 }
             } catch (error) {
                 document.getElementById('questionsContainer').innerHTML = `
-                    <p style="color: red;">Error: ${error.message}</p>
+                    <div class="result-section error">
+                        <h3>❌ Error</h3>
+                        <p>${error.message}</p>
+                    </div>
                     <button class="btn btn-primary" onclick="location.reload()">Try Again</button>
                 `;
             }
         }
         
-        function displayResults(result) {
+        function displayValidationErrors(errors) {
+            let html = `
+                <div class="validation-errors">
+                    <h4>Please correct the following errors:</h4>
+                    <ul>
+                        ${errors.map(e => `<li><strong>${e.field}:</strong> ${e.message}</li>`).join('')}
+                    </ul>
+                </div>
+                <button class="btn btn-primary" onclick="restartQuestionnaire()">Start Over</button>
+            `;
+            
+            document.getElementById('questionsContainer').innerHTML = html;
+        }
+        
+        function restartQuestionnaire() {
+            currentQuestion = 0;
+            answers = {};
+            document.getElementById('questionsContainer').style.display = 'block';
+            document.querySelector('.progress-bar').style.display = 'block';
+            document.getElementById('resultsContainer').classList.remove('active');
+            renderQuestion();
+        }
+        
+        function displayResults(result, profileId) {
             document.getElementById('questionsContainer').style.display = 'none';
             document.querySelector('.progress-bar').style.display = 'none';
             
             let html = '<h2>Your Private Health Insurance Options</h2>';
+            
+            // Profile ID reference
+            if (profileId) {
+                html += `
+                    <div class="profile-id">
+                        Your reference number: <strong>#${profileId}</strong>
+                        <br><small>Save this number to retrieve your quote later</small>
+                    </div>
+                `;
+            }
             
             // Budget recommendation
             html += `
@@ -620,7 +721,7 @@
             `;
             
             html += `
-                <button class="btn btn-primary restart-btn" onclick="location.reload()">
+                <button class="btn btn-primary restart-btn" onclick="restartQuestionnaire()">
                     Start Over
                 </button>
             `;

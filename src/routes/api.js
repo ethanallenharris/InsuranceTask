@@ -1,11 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const UserProfile = require('../models/UserProfile');
-const InMemoryRepository = require('../repository/InMemoryRepository');
+const SQLRepository = require('../repository/SQLRepository');
 const { determineEligibility, getAvailablePlans } = require('../services/eligibility');
+const { validateProfileData, sanitizeProfileData } = require('../validation/validator');
 
-// Single repository instance (could be replaced with dependency injection)
-const repository = new InMemoryRepository();
+// Use SQL repository for persistent storage
+const repository = new SQLRepository();
 
 /**
  * Get questionnaire questions
@@ -17,7 +18,7 @@ router.get('/questions', (req, res) => {
             type: 'number',
             question: 'What is your age?',
             min: 18,
-            max: 100,
+            max: 120,
             required: true
         },
         {
@@ -25,7 +26,7 @@ router.get('/questions', (req, res) => {
             type: 'number',
             question: 'How many people would be covered by this policy (including yourself)?',
             min: 1,
-            max: 10,
+            max: 20,
             required: true
         },
         {
@@ -89,18 +90,26 @@ router.get('/questions', (req, res) => {
  */
 router.post('/submit', (req, res) => {
     try {
-        const profileData = req.body;
+        const rawData = req.body;
         
-        // Basic validation
-        if (!profileData.age || !profileData.annualIncome || !profileData.householdSize) {
+        // Sanitize input data
+        const sanitizedData = sanitizeProfileData(rawData);
+        
+        // Validate input data
+        const validationResult = validateProfileData(sanitizedData);
+        
+        if (!validationResult.isValid()) {
             return res.status(400).json({ 
-                error: 'Missing required fields: age, annualIncome, and householdSize are required' 
+                error: 'Validation failed',
+                details: validationResult.getErrors()
             });
         }
         
-        const profile = UserProfile.fromDict(profileData);
+        // Create profile and save to database
+        const profile = UserProfile.fromDict(sanitizedData);
         const profileId = repository.saveProfile(profile);
         
+        // Determine eligibility
         const result = determineEligibility(profile);
         repository.saveResult(profileId, result);
         
@@ -109,7 +118,17 @@ router.post('/submit', (req, res) => {
             result: result.toDict()
         });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.error('Error processing submission:', error);
+        
+        // Check for database constraint violations
+        if (error.code === 'SQLITE_CONSTRAINT') {
+            return res.status(400).json({ 
+                error: 'Invalid data provided',
+                details: [{ field: 'unknown', message: 'Data validation failed' }]
+            });
+        }
+        
+        res.status(500).json({ error: 'An error occurred processing your request' });
     }
 });
 
@@ -125,14 +144,61 @@ router.get('/plans', (req, res) => {
  * Get a saved result by profile ID
  */
 router.get('/result/:profileId', (req, res) => {
-    const profileId = parseInt(req.params.profileId);
-    const result = repository.getResult(profileId);
-    
-    if (!result) {
-        return res.status(404).json({ error: 'Result not found' });
+    try {
+        const profileId = parseInt(req.params.profileId);
+        
+        if (isNaN(profileId) || profileId < 1) {
+            return res.status(400).json({ error: 'Invalid profile ID' });
+        }
+        
+        const result = repository.getResult(profileId);
+        
+        if (!result) {
+            return res.status(404).json({ error: 'Result not found' });
+        }
+        
+        res.json(result.toDict());
+    } catch (error) {
+        console.error('Error fetching result:', error);
+        res.status(500).json({ error: 'An error occurred fetching the result' });
     }
-    
-    res.json(result.toDict());
+});
+
+/**
+ * Get a saved profile by ID
+ */
+router.get('/profile/:profileId', (req, res) => {
+    try {
+        const profileId = parseInt(req.params.profileId);
+        
+        if (isNaN(profileId) || profileId < 1) {
+            return res.status(400).json({ error: 'Invalid profile ID' });
+        }
+        
+        const profile = repository.getProfile(profileId);
+        
+        if (!profile) {
+            return res.status(404).json({ error: 'Profile not found' });
+        }
+        
+        res.json(profile.toDict());
+    } catch (error) {
+        console.error('Error fetching profile:', error);
+        res.status(500).json({ error: 'An error occurred fetching the profile' });
+    }
+});
+
+/**
+ * Get all profiles (admin endpoint)
+ */
+router.get('/profiles', (req, res) => {
+    try {
+        const profiles = repository.getAllProfiles();
+        res.json(profiles.map(p => p.toDict()));
+    } catch (error) {
+        console.error('Error fetching profiles:', error);
+        res.status(500).json({ error: 'An error occurred fetching profiles' });
+    }
 });
 
 module.exports = router;
