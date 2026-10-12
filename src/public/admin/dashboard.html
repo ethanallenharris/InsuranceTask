@@ -135,7 +135,8 @@
         }
 
         .records-table tr:hover {
-            background-color: #f8f9fa;
+            background-color: #f0f7ff;
+            cursor: pointer;
         }
 
         .records-table tr:last-child td {
@@ -195,6 +196,10 @@
 
         .boolean-no {
             color: #666;
+        }
+
+        .clickable-row {
+            transition: background-color 0.15s;
         }
     </style>
 </head>
@@ -314,7 +319,7 @@
             }
 
             recordsBody.innerHTML = filteredRecords.map(record => `
-                <tr>
+                <tr class="clickable-row" onclick="viewRecord(${record.id})">
                     <td>${record.id}</td>
                     <td>${escapeHtml(record.firstName || '')} ${escapeHtml(record.lastName || '')}</td>
                     <td>${escapeHtml(record.email || '')}</td>
@@ -328,6 +333,11 @@
                     <td>${formatDate(record.createdAt)}</td>
                 </tr>
             `).join('');
+        }
+
+        // Navigate to record detail page
+        function viewRecord(id) {
+            window.location.href = `/admin/record?id=${id}`;
         }
 
         // Helper function to escape HTML
@@ -382,11 +392,12 @@
         document.getElementById('signOutButton').addEventListener('click', () => {
             sessionStorage.removeItem('adminAuthenticated');
             sessionStorage.removeItem('adminEmail');
+            sessionStorage.removeItem('adminRecordsCache');
             window.location.href = '/admin';
         });
 
-        // Initial load
-        fetchRecords();
+        // Initial load - always fetch fresh on page load to get any updates
+        fetchRecords(true);
     </script>
 </body>
 </html>

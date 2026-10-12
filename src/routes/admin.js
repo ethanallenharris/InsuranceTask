@@ -3,7 +3,8 @@ const path = require('path');
 const router = express.Router();
 
 // Dummy data for testing - kept separate from main database
-const dummyRecords = [
+// Using let so we can modify the records
+let dummyRecords = [
     { 
         id: 1,
         firstName: 'James', 
@@ -198,6 +199,9 @@ const dummyRecords = [
     }
 ];
 
+// Valid statuses
+const VALID_STATUSES = ['accepted', 'rejected', 'referred'];
+
 // Serve admin login page
 router.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '../public/admin/login.html'));
@@ -208,15 +212,70 @@ router.get('/dashboard', (req, res) => {
     res.sendFile(path.join(__dirname, '../public/admin/dashboard.html'));
 });
 
+// Serve admin record detail page
+router.get('/record', (req, res) => {
+    res.sendFile(path.join(__dirname, '../public/admin/record.html'));
+});
+
 // API endpoint to get all submitted records
 router.get('/api/records', (req, res) => {
     try {
-        // Return dummy data - kept separate from encrypted user database
-        // TODO: Integrate with actual database when admin decryption is implemented
         res.json({ records: dummyRecords });
     } catch (error) {
         console.error('Error fetching records:', error);
         res.status(500).json({ error: 'Failed to fetch records', details: error.message });
+    }
+});
+
+// API endpoint to get a single record by ID
+router.get('/api/records/:id', (req, res) => {
+    try {
+        const id = parseInt(req.params.id);
+        const record = dummyRecords.find(r => r.id === id);
+        
+        if (!record) {
+            return res.status(404).json({ error: 'Record not found' });
+        }
+        
+        res.json({ record });
+    } catch (error) {
+        console.error('Error fetching record:', error);
+        res.status(500).json({ error: 'Failed to fetch record', details: error.message });
+    }
+});
+
+// API endpoint to update a record's status
+router.put('/api/records/:id', (req, res) => {
+    try {
+        const id = parseInt(req.params.id);
+        const { status } = req.body;
+        
+        // Validate status
+        if (!status || !VALID_STATUSES.includes(status)) {
+            return res.status(400).json({ 
+                error: 'Invalid status', 
+                validStatuses: VALID_STATUSES 
+            });
+        }
+        
+        // Find and update the record
+        const recordIndex = dummyRecords.findIndex(r => r.id === id);
+        
+        if (recordIndex === -1) {
+            return res.status(404).json({ error: 'Record not found' });
+        }
+        
+        // Update the status
+        dummyRecords[recordIndex].status = status;
+        dummyRecords[recordIndex].updatedAt = new Date().toISOString();
+        
+        res.json({ 
+            success: true, 
+            record: dummyRecords[recordIndex] 
+        });
+    } catch (error) {
+        console.error('Error updating record:', error);
+        res.status(500).json({ error: 'Failed to update record', details: error.message });
     }
 });
 

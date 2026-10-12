@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Record Details - Admin Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #f5f5f5;
+            min-height: 100vh;
+        }
+
+        .header {
+            background-color: #0066cc;
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 1.25rem;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .user-email {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .sign-out-button {
+            background-color: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background-color 0.2s;
+        }
+
+        .sign-out-button:hover {
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .main-content {
+            padding: 2rem;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #0066cc;
+            text-decoration: none;
+            margin-bottom: 1.5rem;
+            font-size: 0.95rem;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        .record-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .record-header {
+            background-color: #f8f9fa;
+            padding: 1.5rem;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .record-header h2 {
+            color: #333;
+            font-size: 1.25rem;
+        }
+
+        .record-id {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .record-body {
+            padding: 1.5rem;
+        }
+
+        .info-section {
+            margin-bottom: 2rem;
+        }
+
+        .info-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .info-section h3 {
+            color: #333;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #eee;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .info-label {
+            font-size: 0.85rem;
+            color: #666;
+            font-weight: 500;
+        }
+
+        .info-value {
+            font-size: 1rem;
+            color: #333;
+        }
+
+        .info-value.boolean-yes {
+            color: #155724;
+        }
+
+        .info-value.boolean-no {
+            color: #666;
+        }
+
+        .status-section {
+            background-color: #f8f9fa;
+            padding: 1.5rem;
+            border-top: 1px solid #eee;
+        }
+
+        .status-section h3 {
+            color: #333;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .status-options {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .status-option {
+            flex: 1;
+            padding: 1rem;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+        }
+
+        .status-option:hover {
+            border-color: #0066cc;
+        }
+
+        .status-option.selected {
+            border-color: #0066cc;
+            background-color: #e6f0ff;
+        }
+
+        .status-option.accepted.selected {
+            border-color: #155724;
+            background-color: #d4edda;
+        }
+
+        .status-option.referred.selected {
+            border-color: #856404;
+            background-color: #fff3cd;
+        }
+
+        .status-option.rejected.selected {
+            border-color: #721c24;
+            background-color: #f8d7da;
+        }
+
+        .status-option-label {
+            font-weight: 600;
+            font-size: 1rem;
+            text-transform: capitalize;
+        }
+
+        .status-option.accepted .status-option-label {
+            color: #155724;
+        }
+
+        .status-option.referred .status-option-label {
+            color: #856404;
+        }
+
+        .status-option.rejected .status-option-label {
+            color: #721c24;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-secondary {
+            background-color: white;
+            color: #333;
+            border: 1px solid #ddd;
+        }
+
+        .btn-secondary:hover {
+            background-color: #f8f9fa;
+        }
+
+        .btn-primary {
+            background-color: #0066cc;
+            color: white;
+            border: none;
+        }
+
+        .btn-primary:hover {
+            background-color: #0052a3;
+        }
+
+        .btn-primary:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .loading-message,
+        .error-message {
+            text-align: center;
+            padding: 3rem;
+            color: #666;
+        }
+
+        .error-message {
+            color: #c00;
+        }
+
+        .success-message {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 1rem;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+            display: none;
+        }
+
+        .success-message.visible {
+            display: block;
+        }
+
+        .current-status {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            text-transform: capitalize;
+        }
+
+        .current-status.accepted {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .current-status.referred {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+
+        .current-status.rejected {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        @media (max-width: 600px) {
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .status-options {
+                flex-direction: column;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>Admin Dashboard</h1>
+        <div class="header-right">
+            <span class="user-email" id="userEmail"></span>
+            <button class="sign-out-button" id="signOutButton">Sign Out</button>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <a href="/admin/dashboard" class="back-link">← Back to Records</a>
+
+        <div id="successMessage" class="success-message">Record updated successfully!</div>
+
+        <div class="record-card" id="recordCard">
+            <div class="loading-message" id="loadingMessage">Loading record...</div>
+        </div>
+    </main>
+
+    <script>
+        // Check if user is authenticated
+        const isAuthenticated = sessionStorage.getItem('adminAuthenticated') === 'true';
+        const adminEmail = sessionStorage.getItem('adminEmail');
+
+        if (!isAuthenticated) {
+            window.location.href = '/admin';
+        } else {
+            document.getElementById('userEmail').textContent = adminEmail;
+        }
+
+        // Get record ID from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const recordId = parseInt(urlParams.get('id'));
+
+        let currentRecord = null;
+        let selectedStatus = null;
+
+        // DOM elements
+        const recordCard = document.getElementById('recordCard');
+        const loadingMessage = document.getElementById('loadingMessage');
+        const successMessage = document.getElementById('successMessage');
+
+        // Fetch record from server
+        async function fetchRecord() {
+            if (!recordId) {
+                recordCard.innerHTML = '<div class="error-message">No record ID provided.</div>';
+                return;
+            }
+
+            try {
+                const response = await fetch(`/admin/api/records/${recordId}`);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch record');
+                }
+
+                const data = await response.json();
+                currentRecord = data.record;
+                selectedStatus = currentRecord.status;
+                renderRecord(currentRecord);
+            } catch (error) {
+                console.error('Error fetching record:', error);
+                recordCard.innerHTML = '<div class="error-message">Failed to load record. Please try again.</div>';
+            }
+        }
+
+        // Render record details
+        function renderRecord(record) {
+            recordCard.innerHTML = `
+                <div class="record-header">
+                    <div>
+                        <h2>${escapeHtml(record.firstName || '')} ${escapeHtml(record.lastName || '')}</h2>
+                        <span class="record-id">Record ID: ${record.id}</span>
+                    </div>
+                    <span class="current-status ${record.status}">${record.status}</span>
+                </div>
+                <div class="record-body">
+                    <div class="info-section">
+                        <h3>Personal Information</h3>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="info-label">Email</span>
+                                <span class="info-value">${escapeHtml(record.email || '-')}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Postcode</span>
+                                <span class="info-value">${escapeHtml(record.postcode || '-')}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Age</span>
+                                <span class="info-value">${record.age || '-'}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Region</span>
+                                <span class="info-value">${escapeHtml(record.region || '-')}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="info-section">
+                        <h3>Financial & Employment</h3>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="info-label">Annual Income</span>
+                                <span class="info-value">${formatIncome(record.annualIncome)}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Employment Status</span>
+                                <span class="info-value">${escapeHtml(record.employmentStatus || '-')}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Household Size</span>
+                                <span class="info-value">${record.householdSize || '-'}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="info-section">
+                        <h3>Health Information</h3>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="info-label">Pre-existing Conditions</span>
+                                <span class="info-value ${getBooleanClass(record.hasPreexistingConditions)}">${formatBoolean(record.hasPreexistingConditions)}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Smoker</span>
+                                <span class="info-value ${getBooleanClass(record.isSmoker)}">${formatBoolean(record.isSmoker)}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="info-section">
+                        <h3>Submission Details</h3>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="info-label">Submitted</span>
+                                <span class="info-value">${formatDate(record.createdAt)}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="status-section">
+                    <h3>Update Status</h3>
+                    <div class="status-options">
+                        <div class="status-option accepted ${selectedStatus === 'accepted' ? 'selected' : ''}" data-status="accepted">
+                            <span class="status-option-label">Accepted</span>
+                        </div>
+                        <div class="status-option referred ${selectedStatus === 'referred' ? 'selected' : ''}" data-status="referred">
+                            <span class="status-option-label">Referred</span>
+                        </div>
+                        <div class="status-option rejected ${selectedStatus === 'rejected' ? 'selected' : ''}" data-status="rejected">
+                            <span class="status-option-label">Rejected</span>
+                        </div>
+                    </div>
+                    <div class="action-buttons">
+                        <button class="btn btn-secondary" onclick="window.location.href='/admin/dashboard'">Cancel</button>
+                        <button class="btn btn-primary" id="saveButton" onclick="saveRecord()">Save Changes</button>
+                    </div>
+                </div>
+            `;
+
+            // Add click handlers for status options
+            document.querySelectorAll('.status-option').forEach(option => {
+                option.addEventListener('click', () => {
+                    document.querySelectorAll('.status-option').forEach(opt => opt.classList.remove('selected'));
+                    option.classList.add('selected');
+                    selectedStatus = option.dataset.status;
+                });
+            });
+        }
+
+        // Save record
+        async function saveRecord() {
+            const saveButton = document.getElementById('saveButton');
+            saveButton.disabled = true;
+            saveButton.textContent = 'Saving...';
+
+            try {
+                const response = await fetch(`/admin/api/records/${recordId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ status: selectedStatus })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to update record');
+                }
+
+                // Clear the cached records so dashboard will fetch fresh data
+                sessionStorage.removeItem('adminRecordsCache');
+
+                // Show success message
+                successMessage.classList.add('visible');
+
+                // Update current record and re-render
+                currentRecord.status = selectedStatus;
+                renderRecord(currentRecord);
+
+                // Hide success message after 3 seconds
+                setTimeout(() => {
+                    successMessage.classList.remove('visible');
+                }, 3000);
+
+            } catch (error) {
+                console.error('Error saving record:', error);
+                alert('Failed to save changes. Please try again.');
+            } finally {
+                saveButton.disabled = false;
+                saveButton.textContent = 'Save Changes';
+            }
+        }
+
+        // Helper functions
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function formatIncome(value) {
+            if (value === null || value === undefined) return '-';
+            return '£' + Number(value).toLocaleString();
+        }
+
+        function getBooleanClass(value) {
+            if (value === null || value === undefined) return '';
+            return value ? 'boolean-yes' : 'boolean-no';
+        }
+
+        function formatBoolean(value) {
+            if (value === null || value === undefined) return '-';
+            return value ? 'Yes' : 'No';
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return '-';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-GB', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        // Sign out
+        document.getElementById('signOutButton').addEventListener('click', () => {
+            sessionStorage.removeItem('adminAuthenticated');
+            sessionStorage.removeItem('adminEmail');
+            sessionStorage.removeItem('adminRecordsCache');
+            window.location.href = '/admin';
+        });
+
+        // Initial load
+        fetchRecord();
+    </script>
+</body>
+</html>
