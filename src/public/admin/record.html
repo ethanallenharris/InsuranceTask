@@ -153,6 +153,35 @@
             color: #666;
         }
 
+        .form-input {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #0066cc;
+        }
+
+        .form-select {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+            background: white;
+            cursor: pointer;
+        }
+
+        .form-select:focus {
+            outline: none;
+            border-color: #0066cc;
+        }
+
         .status-section {
             background-color: #f8f9fa;
             padding: 1.5rem;
@@ -313,6 +342,48 @@
             color: #721c24;
         }
 
+        .toggle-switch {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .toggle-switch input[type="checkbox"] {
+            width: 40px;
+            height: 22px;
+            appearance: none;
+            background-color: #ccc;
+            border-radius: 11px;
+            position: relative;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .toggle-switch input[type="checkbox"]:checked {
+            background-color: #0066cc;
+        }
+
+        .toggle-switch input[type="checkbox"]::before {
+            content: '';
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background-color: white;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.2s;
+        }
+
+        .toggle-switch input[type="checkbox"]:checked::before {
+            transform: translateX(18px);
+        }
+
+        .toggle-label {
+            font-size: 0.9rem;
+            color: #333;
+        }
+
         @media (max-width: 600px) {
             .info-grid {
                 grid-template-columns: 1fr;
@@ -370,6 +441,14 @@
         let currentRecord = null;
         let selectedStatus = null;
 
+        // Valid options
+        const employmentOptions = ['Employed', 'Self-employed', 'Unemployed', 'Retired', 'Student'];
+        const regionOptions = [
+            'London', 'South East', 'South West', 'East of England',
+            'West Midlands', 'East Midlands', 'Yorkshire and the Humber',
+            'North West', 'North East', 'Scotland', 'Wales', 'Northern Ireland'
+        ];
+
         // DOM elements
         const recordCard = document.getElementById('recordCard');
         const loadingMessage = document.getElementById('loadingMessage');
@@ -398,12 +477,20 @@
             }
         }
 
-        // Render record details
+        // Render record details with editable fields
         function renderRecord(record) {
+            const employmentOptionsHtml = employmentOptions.map(opt => 
+                `<option value="${opt}" ${record.employmentStatus === opt ? 'selected' : ''}>${opt}</option>`
+            ).join('');
+
+            const regionOptionsHtml = regionOptions.map(opt => 
+                `<option value="${opt}" ${record.region === opt ? 'selected' : ''}>${opt}</option>`
+            ).join('');
+
             recordCard.innerHTML = `
                 <div class="record-header">
                     <div>
-                        <h2>${escapeHtml(record.firstName || '')} ${escapeHtml(record.lastName || '')}</h2>
+                        <h2 id="recordTitle">${escapeHtml(record.firstName || '')} ${escapeHtml(record.lastName || '')}</h2>
                         <span class="record-id">Record ID: ${record.id}</span>
                     </div>
                     <span class="current-status ${record.status}">${record.status}</span>
@@ -413,20 +500,30 @@
                         <h3>Personal Information</h3>
                         <div class="info-grid">
                             <div class="info-item">
-                                <span class="info-label">Email</span>
-                                <span class="info-value">${escapeHtml(record.email || '-')}</span>
+                                <label class="info-label" for="firstName">First Name</label>
+                                <input type="text" id="firstName" class="form-input" value="${escapeHtml(record.firstName || '')}" />
                             </div>
                             <div class="info-item">
-                                <span class="info-label">Postcode</span>
-                                <span class="info-value">${escapeHtml(record.postcode || '-')}</span>
+                                <label class="info-label" for="lastName">Last Name</label>
+                                <input type="text" id="lastName" class="form-input" value="${escapeHtml(record.lastName || '')}" />
                             </div>
                             <div class="info-item">
-                                <span class="info-label">Age</span>
-                                <span class="info-value">${record.age || '-'}</span>
+                                <label class="info-label" for="email">Email</label>
+                                <input type="email" id="email" class="form-input" value="${escapeHtml(record.email || '')}" />
                             </div>
                             <div class="info-item">
-                                <span class="info-label">Region</span>
-                                <span class="info-value">${escapeHtml(record.region || '-')}</span>
+                                <label class="info-label" for="postcode">Postcode</label>
+                                <input type="text" id="postcode" class="form-input" value="${escapeHtml(record.postcode || '')}" />
+                            </div>
+                            <div class="info-item">
+                                <label class="info-label" for="age">Age</label>
+                                <input type="number" id="age" class="form-input" min="18" max="120" value="${record.age || ''}" />
+                            </div>
+                            <div class="info-item">
+                                <label class="info-label" for="region">Region</label>
+                                <select id="region" class="form-select">
+                                    ${regionOptionsHtml}
+                                </select>
                             </div>
                         </div>
                     </div>
@@ -434,16 +531,18 @@
                         <h3>Financial & Employment</h3>
                         <div class="info-grid">
                             <div class="info-item">
-                                <span class="info-label">Annual Income</span>
-                                <span class="info-value">${formatIncome(record.annualIncome)}</span>
+                                <label class="info-label" for="annualIncome">Annual Income (£)</label>
+                                <input type="number" id="annualIncome" class="form-input" min="0" value="${record.annualIncome || ''}" />
                             </div>
                             <div class="info-item">
-                                <span class="info-label">Employment Status</span>
-                                <span class="info-value">${escapeHtml(record.employmentStatus || '-')}</span>
+                                <label class="info-label" for="employmentStatus">Employment Status</label>
+                                <select id="employmentStatus" class="form-select">
+                                    ${employmentOptionsHtml}
+                                </select>
                             </div>
                             <div class="info-item">
-                                <span class="info-label">Household Size</span>
-                                <span class="info-value">${record.householdSize || '-'}</span>
+                                <label class="info-label" for="householdSize">Household Size</label>
+                                <input type="number" id="householdSize" class="form-input" min="1" max="20" value="${record.householdSize || ''}" />
                             </div>
                         </div>
                     </div>
@@ -452,11 +551,17 @@
                         <div class="info-grid">
                             <div class="info-item">
                                 <span class="info-label">Pre-existing Conditions</span>
-                                <span class="info-value ${getBooleanClass(record.hasPreexistingConditions)}">${formatBoolean(record.hasPreexistingConditions)}</span>
+                                <div class="toggle-switch">
+                                    <input type="checkbox" id="hasPreexistingConditions" ${record.hasPreexistingConditions ? 'checked' : ''} />
+                                    <span class="toggle-label" id="preexistingLabel">${record.hasPreexistingConditions ? 'Yes' : 'No'}</span>
+                                </div>
                             </div>
                             <div class="info-item">
                                 <span class="info-label">Smoker</span>
-                                <span class="info-value ${getBooleanClass(record.isSmoker)}">${formatBoolean(record.isSmoker)}</span>
+                                <div class="toggle-switch">
+                                    <input type="checkbox" id="isSmoker" ${record.isSmoker ? 'checked' : ''} />
+                                    <span class="toggle-label" id="smokerLabel">${record.isSmoker ? 'Yes' : 'No'}</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -466,6 +571,10 @@
                             <div class="info-item">
                                 <span class="info-label">Submitted</span>
                                 <span class="info-value">${formatDate(record.createdAt)}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Last Updated</span>
+                                <span class="info-value">${record.updatedAt ? formatDate(record.updatedAt) : '-'}</span>
                             </div>
                         </div>
                     </div>
@@ -498,6 +607,44 @@
                     selectedStatus = option.dataset.status;
                 });
             });
+
+            // Add change handlers for toggle switches
+            document.getElementById('hasPreexistingConditions').addEventListener('change', (e) => {
+                document.getElementById('preexistingLabel').textContent = e.target.checked ? 'Yes' : 'No';
+            });
+
+            document.getElementById('isSmoker').addEventListener('change', (e) => {
+                document.getElementById('smokerLabel').textContent = e.target.checked ? 'Yes' : 'No';
+            });
+
+            // Update title when name changes
+            document.getElementById('firstName').addEventListener('input', updateTitle);
+            document.getElementById('lastName').addEventListener('input', updateTitle);
+        }
+
+        // Update the record title when name changes
+        function updateTitle() {
+            const firstName = document.getElementById('firstName').value;
+            const lastName = document.getElementById('lastName').value;
+            document.getElementById('recordTitle').textContent = `${firstName} ${lastName}`.trim() || 'Unnamed Record';
+        }
+
+        // Gather form data
+        function getFormData() {
+            return {
+                firstName: document.getElementById('firstName').value.trim(),
+                lastName: document.getElementById('lastName').value.trim(),
+                email: document.getElementById('email').value.trim(),
+                postcode: document.getElementById('postcode').value.trim(),
+                age: parseInt(document.getElementById('age').value) || null,
+                region: document.getElementById('region').value,
+                annualIncome: parseFloat(document.getElementById('annualIncome').value) || null,
+                employmentStatus: document.getElementById('employmentStatus').value,
+                householdSize: parseInt(document.getElementById('householdSize').value) || null,
+                hasPreexistingConditions: document.getElementById('hasPreexistingConditions').checked,
+                isSmoker: document.getElementById('isSmoker').checked,
+                status: selectedStatus
+            };
         }
 
         // Save record
@@ -507,16 +654,19 @@
             saveButton.textContent = 'Saving...';
 
             try {
+                const formData = getFormData();
+
                 const response = await fetch(`/admin/api/records/${recordId}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ status: selectedStatus })
+                    body: JSON.stringify(formData)
                 });
 
                 if (!response.ok) {
-                    throw new Error('Failed to update record');
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to update record');
                 }
 
                 // Clear the cached records so dashboard will fetch fresh data
@@ -526,7 +676,9 @@
                 successMessage.classList.add('visible');
 
                 // Update current record and re-render
-                currentRecord.status = selectedStatus;
+                const result = await response.json();
+                currentRecord = result.record;
+                selectedStatus = currentRecord.status;
                 renderRecord(currentRecord);
 
                 // Hide success message after 3 seconds
@@ -536,7 +688,7 @@
 
             } catch (error) {
                 console.error('Error saving record:', error);
-                alert('Failed to save changes. Please try again.');
+                alert('Failed to save changes: ' + error.message);
             } finally {
                 saveButton.disabled = false;
                 saveButton.textContent = 'Save Changes';
@@ -548,21 +700,6 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
-        }
-
-        function formatIncome(value) {
-            if (value === null || value === undefined) return '-';
-            return '£' + Number(value).toLocaleString();
-        }
-
-        function getBooleanClass(value) {
-            if (value === null || value === undefined) return '';
-            return value ? 'boolean-yes' : 'boolean-no';
-        }
-
-        function formatBoolean(value) {
-            if (value === null || value === undefined) return '-';
-            return value ? 'Yes' : 'No';
         }
 
         function formatDate(dateString) {

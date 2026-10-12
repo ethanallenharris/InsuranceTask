@@ -199,8 +199,14 @@ let dummyRecords = [
     }
 ];
 
-// Valid statuses
+// Valid options
 const VALID_STATUSES = ['accepted', 'rejected', 'referred'];
+const VALID_EMPLOYMENT_STATUSES = ['Employed', 'Self-employed', 'Unemployed', 'Retired', 'Student'];
+const VALID_REGIONS = [
+    'London', 'South East', 'South West', 'East of England',
+    'West Midlands', 'East Midlands', 'Yorkshire and the Humber',
+    'North West', 'North East', 'Scotland', 'Wales', 'Northern Ireland'
+];
 
 // Serve admin login page
 router.get('/', (req, res) => {
@@ -244,29 +250,90 @@ router.get('/api/records/:id', (req, res) => {
     }
 });
 
-// API endpoint to update a record's status
+// API endpoint to update a record
 router.put('/api/records/:id', (req, res) => {
     try {
         const id = parseInt(req.params.id);
-        const { status } = req.body;
+        const updates = req.body;
         
-        // Validate status
-        if (!status || !VALID_STATUSES.includes(status)) {
-            return res.status(400).json({ 
-                error: 'Invalid status', 
-                validStatuses: VALID_STATUSES 
-            });
-        }
-        
-        // Find and update the record
+        // Find the record
         const recordIndex = dummyRecords.findIndex(r => r.id === id);
         
         if (recordIndex === -1) {
             return res.status(404).json({ error: 'Record not found' });
         }
         
-        // Update the status
-        dummyRecords[recordIndex].status = status;
+        // Validate status if provided
+        if (updates.status && !VALID_STATUSES.includes(updates.status)) {
+            return res.status(400).json({ 
+                error: 'Invalid status', 
+                validStatuses: VALID_STATUSES 
+            });
+        }
+        
+        // Validate employment status if provided
+        if (updates.employmentStatus && !VALID_EMPLOYMENT_STATUSES.includes(updates.employmentStatus)) {
+            return res.status(400).json({ 
+                error: 'Invalid employment status', 
+                validEmploymentStatuses: VALID_EMPLOYMENT_STATUSES 
+            });
+        }
+        
+        // Validate region if provided
+        if (updates.region && !VALID_REGIONS.includes(updates.region)) {
+            return res.status(400).json({ 
+                error: 'Invalid region', 
+                validRegions: VALID_REGIONS 
+            });
+        }
+        
+        // Validate age if provided
+        if (updates.age !== undefined && updates.age !== null) {
+            const age = parseInt(updates.age);
+            if (isNaN(age) || age < 18 || age > 120) {
+                return res.status(400).json({ 
+                    error: 'Invalid age. Must be between 18 and 120.' 
+                });
+            }
+            updates.age = age;
+        }
+        
+        // Validate annual income if provided
+        if (updates.annualIncome !== undefined && updates.annualIncome !== null) {
+            const income = parseFloat(updates.annualIncome);
+            if (isNaN(income) || income < 0) {
+                return res.status(400).json({ 
+                    error: 'Invalid annual income. Must be a positive number.' 
+                });
+            }
+            updates.annualIncome = income;
+        }
+        
+        // Validate household size if provided
+        if (updates.householdSize !== undefined && updates.householdSize !== null) {
+            const size = parseInt(updates.householdSize);
+            if (isNaN(size) || size < 1 || size > 20) {
+                return res.status(400).json({ 
+                    error: 'Invalid household size. Must be between 1 and 20.' 
+                });
+            }
+            updates.householdSize = size;
+        }
+        
+        // Update allowed fields
+        const allowedFields = [
+            'firstName', 'lastName', 'email', 'postcode', 'age', 'region',
+            'annualIncome', 'employmentStatus', 'householdSize',
+            'hasPreexistingConditions', 'isSmoker', 'status'
+        ];
+        
+        allowedFields.forEach(field => {
+            if (updates[field] !== undefined) {
+                dummyRecords[recordIndex][field] = updates[field];
+            }
+        });
+        
+        // Update timestamp
         dummyRecords[recordIndex].updatedAt = new Date().toISOString();
         
         res.json({ 
