@@ -1,6 +1,7 @@
 const { getConnection, saveDatabase } = require('../database/connection');
 const User = require('../models/User');
 const UserProfile = require('../models/UserProfile');
+const FamilyMember = require('../models/FamilyMember');
 const EligibilityResult = require('../models/EligibilityResult');
 const InsurancePlan = require('../models/InsurancePlan');
 const { encrypt, decrypt, hashEmail } = require('../utils/encryption');
@@ -12,6 +13,27 @@ const { sendProcessingConfirmationEmail } = require('../services/emailService');
 class SQLRepository {
     constructor() {
         this.db = getConnection();
+        this.ensureFamilyMembersTable();
+    }
+
+    /**
+     * Ensure family_members table exists (for backwards compatibility)
+     */
+    ensureFamilyMembersTable() {
+        this.db.run(`
+            CREATE TABLE IF NOT EXISTS family_members (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                relationship TEXT NOT NULL CHECK(relationship IN ('spouse', 'child')),
+                first_name_encrypted TEXT NOT NULL,
+                last_name_encrypted TEXT NOT NULL,
+                date_of_birth TEXT NOT NULL,
+                has_preexisting_conditions INTEGER NOT NULL DEFAULT 0 CHECK(has_preexisting_conditions IN (0, 1)),
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        `);
+        this.db.run('CREATE INDEX IF NOT EXISTS idx_family_members_user ON family_members(user_id)');
     }
 
     /**
@@ -182,6 +204,65 @@ class SQLRepository {
                 status: obj.status
             });
         });
+    }
+
+    /**
+     * Save family members for a user
+     * @param {number} userId
+     * @param {FamilyMember[]} familyMembers
+     */
+    saveFamilyMembers(userId, familyMembers) {
+        if (!familyMembers || familyMembers.length === 0) {
+            return;
+        }
+
+        const stmt = this.db.prepare(`
+            INSERT INTO family_members (
+                user_id, relationship, first_name_encrypted, last_name_encrypted,
+                date_of_birth, has_preexisting_conditions
+            ) VALUES (?, ?, ?, ?, ?, ?)
+        `);
+
+        for (const member of familyMembers) {
+            stmt.run([
+                userId,
+                member.relationship,
+                encrypt(member.firstName),
+                encrypt(member.lastName),
+                member.dateOfBirth,
+                member.hasPreexistingConditions ? 1 : 0
+            ]);
+        }
+
+        stmt.free();
+        saveDatabase();
+    }
+
+    /**
+     * Get family members for a user
+     * @param {number} userId
+     * @returns {FamilyMember[]}
+     */
+    getFamilyMembersByUserId(userId) {
+        const stmt = this.db.prepare('SELECT * FROM family_members WHERE user_id = ?');
+        stmt.bind([userId]);
+
+        const members = [];
+        while (stmt.step()) {
+            const row = stmt.getAsObject();
+            members.push(new FamilyMember({
+                id: row.id,
+                userId: row.user_id,
+                relationship: row.relationship,
+                firstName: decrypt(row.first_name_encrypted),
+                lastName: decrypt(row.last_name_encrypted),
+                dateOfBirth: row.date_of_birth,
+                hasPreexistingConditions: row.has_preexisting_conditions === 1
+            }));
+        }
+
+        stmt.free();
+        return members;
     }
 
     /**
