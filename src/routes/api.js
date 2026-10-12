@@ -2,13 +2,16 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const UserProfile = require('../models/UserProfile');
+const FamilyMember = require('../models/FamilyMember');
 const SQLRepository = require('../repository/SQLRepository');
 const { determineEligibility, getAvailablePlans } = require('../services/eligibility');
 const { 
     validateUserData, 
-    validateProfileData, 
+    validateProfileData,
+    validateFamilyMemberData,
     sanitizeUserData, 
-    sanitizeProfileData 
+    sanitizeProfileData,
+    sanitizeFamilyMemberData
 } = require('../validation/validator');
 
 // Use SQL repository for persistent storage
@@ -59,15 +62,6 @@ router.get('/questions', (req, res) => {
             question: 'What is your age?',
             min: 18,
             max: 120,
-            required: true,
-            category: 'profile'
-        },
-        {
-            id: 'householdSize',
-            type: 'number',
-            question: 'How many people would be covered by this policy (including yourself)?',
-            min: 1,
-            max: 20,
             required: true,
             category: 'profile'
         },
@@ -129,6 +123,59 @@ router.get('/questions', (req, res) => {
             question: 'Do you want private dental cover included?',
             required: true,
             category: 'profile'
+        },
+        // Family questions
+        {
+            id: 'hasSpouse',
+            type: 'boolean',
+            question: 'Do you want to include a spouse/partner on this policy?',
+            required: true,
+            category: 'family'
+        },
+        {
+            id: 'numberOfChildren',
+            type: 'number',
+            question: 'How many children do you want to include on this policy? (Enter 0 if none)',
+            min: 0,
+            max: 10,
+            required: true,
+            placeholder: '0',
+            category: 'family'
+        },
+        // Spouse questions (conditional - shown if hasSpouse is true)
+        {
+            id: 'spouseFirstName',
+            type: 'text',
+            question: "What is your spouse/partner's first name?",
+            required: true,
+            maxLength: 50,
+            category: 'spouse',
+            conditional: { field: 'hasSpouse', value: true }
+        },
+        {
+            id: 'spouseLastName',
+            type: 'text',
+            question: "What is your spouse/partner's last name?",
+            required: true,
+            maxLength: 50,
+            category: 'spouse',
+            conditional: { field: 'hasSpouse', value: true }
+        },
+        {
+            id: 'spouseDateOfBirth',
+            type: 'date',
+            question: "What is your spouse/partner's date of birth?",
+            required: true,
+            category: 'spouse',
+            conditional: { field: 'hasSpouse', value: true }
+        },
+        {
+            id: 'spouseHasPreexistingConditions',
+            type: 'boolean',
+            question: 'Does your spouse/partner have any pre-existing health conditions?',
+            required: true,
+            category: 'spouse',
+            conditional: { field: 'hasSpouse', value: true }
         }
     ];
     
@@ -150,17 +197,24 @@ router.post('/submit', (req, res) => {
             postcode: rawData.postcode
         };
         
+        // Calculate household size from family members
+        const numberOfChildren = rawData.numberOfChildren || 0;
+        const hasSpouse = rawData.hasSpouse || false;
+        const householdSize = 1 + (hasSpouse ? 1 : 0) + numberOfChildren;
+        
         const rawProfileData = {
             age: rawData.age,
             annualIncome: rawData.annualIncome,
-            householdSize: rawData.householdSize,
+            householdSize: householdSize,
             employmentStatus: rawData.employmentStatus,
             region: rawData.region,
             hasPreexistingConditions: rawData.hasPreexistingConditions,
             isSmoker: rawData.isSmoker,
             wantsOutpatientCover: rawData.wantsOutpatientCover,
             wantsMentalHealthCover: rawData.wantsMentalHealthCover,
-            wantsPrivateDental: rawData.wantsPrivateDental
+            wantsPrivateDental: rawData.wantsPrivateDental,
+            hasSpouse: hasSpouse,
+            numberOfChildren: numberOfChildren
         };
         
         // Sanitize input data
@@ -193,9 +247,59 @@ router.post('/submit', (req, res) => {
             });
         }
         
+        // Validate and prepare family members
+        const familyMembers = [];
+        
+        // Validate spouse if included
+        if (hasSpouse) {
+            const rawSpouseData = {
+                relationship: 'spouse',
+                firstName: rawData.spouseFirstName,
+                lastName: rawData.spouseLastName,
+                dateOfBirth: rawData.spouseDateOfBirth,
+                hasPreexistingConditions: rawData.spouseHasPreexistingConditions || false
+            };
+            
+            const spouseValidation = validateFamilyMemberData(rawSpouseData, 0);
+            if (!spouseValidation.isValid()) {
+                return res.status(400).json({ 
+                    error: 'Validation failed',
+                    details: spouseValidation.getErrors()
+                });
+            }
+            
+            familyMembers.push(sanitizeFamilyMemberData(rawSpouseData));
+        }
+        
+        // Validate children if included
+        for (let i = 0; i < numberOfChildren; i++) {
+            const rawChildData = {
+                relationship: 'child',
+                firstName: rawData[`child${i}FirstName`],
+                lastName: rawData[`child${i}LastName`],
+                dateOfBirth: rawData[`child${i}DateOfBirth`],
+                hasPreexistingConditions: rawData[`child${i}HasPreexistingConditions`] || false
+            };
+            
+            const childValidation = validateFamilyMemberData(rawChildData, i);
+            if (!childValidation.isValid()) {
+                return res.status(400).json({ 
+                    error: 'Validation failed',
+                    details: childValidation.getErrors()
+                });
+            }
+            
+            familyMembers.push(sanitizeFamilyMemberData(rawChildData));
+        }
+        
         // Create and save user (with encrypted fields)
         const user = User.fromDict(sanitizedUserData);
         const userId = repository.saveUser(user);
+        
+        // Save family members
+        if (familyMembers.length > 0) {
+            repository.saveFamilyMembers(userId, familyMembers.map(fm => FamilyMember.fromDict(fm)));
+        }
         
         // Create profile and save to database
         const profile = UserProfile.fromDict({
@@ -208,10 +312,14 @@ router.post('/submit', (req, res) => {
         const result = determineEligibility(profile);
         repository.saveResult(profileId, result);
         
+        // Get saved family members for response
+        const savedFamilyMembers = repository.getFamilyMembersByUserId(userId);
+        
         res.json({
             profileId: profileId,
             userId: userId,
             user: user.toSafeDict(),
+            familyMembers: savedFamilyMembers.map(fm => fm.toSafeDict()),
             result: result.toDict()
         });
     } catch (error) {
@@ -282,6 +390,26 @@ router.get('/profile/:profileId', (req, res) => {
     } catch (error) {
         console.error('Error fetching profile:', error);
         res.status(500).json({ error: 'An error occurred fetching the profile' });
+    }
+});
+
+/**
+ * Get family members for a user
+ */
+router.get('/user/:userId/family', (req, res) => {
+    try {
+        const userId = parseInt(req.params.userId);
+        
+        if (isNaN(userId) || userId < 1) {
+            return res.status(400).json({ error: 'Invalid user ID' });
+        }
+        
+        const familyMembers = repository.getFamilyMembersByUserId(userId);
+        
+        res.json(familyMembers.map(fm => fm.toDict()));
+    } catch (error) {
+        console.error('Error fetching family members:', error);
+        res.status(500).json({ error: 'An error occurred fetching family members' });
     }
 });
 
