@@ -18,34 +18,19 @@ router.get('/api/records', (req, res) => {
         const { getConnection } = require('../database/connection');
         const db = getConnection();
         
-        // Query to get users with their profiles
-        const result = db.exec(`
-            SELECT 
-                u.id,
-                u.first_name,
-                u.last_name,
-                u.email,
-                u.postcode,
-                u.status,
-                u.created_at,
-                p.age,
-                p.annual_income,
-                p.employment_status,
-                p.household_size,
-                p.has_preexisting_conditions,
-                p.is_smoker,
-                p.region
-            FROM users u
-            LEFT JOIN profiles p ON u.id = p.user_id
-            ORDER BY u.created_at DESC
-        `);
+        // First, check what tables exist
+        const tablesResult = db.exec("SELECT name FROM sqlite_master WHERE type='table'");
+        console.log('Available tables:', tablesResult.length > 0 ? tablesResult[0].values : 'none');
         
-        if (result.length === 0) {
+        // Try to get users first
+        const usersResult = db.exec('SELECT * FROM users ORDER BY created_at DESC');
+        
+        if (usersResult.length === 0) {
             return res.json({ records: [] });
         }
         
-        const columns = result[0].columns;
-        const records = result[0].values.map(row => {
+        const columns = usersResult[0].columns;
+        const records = usersResult[0].values.map(row => {
             const record = {};
             columns.forEach((col, index) => {
                 record[col] = row[index];
@@ -53,10 +38,41 @@ router.get('/api/records', (req, res) => {
             return record;
         });
         
+        // Try to get profiles and join them if the table exists
+        try {
+            const profilesResult = db.exec('SELECT * FROM user_profiles');
+            if (profilesResult.length > 0) {
+                const profileColumns = profilesResult[0].columns;
+                const profiles = profilesResult[0].values.map(row => {
+                    const profile = {};
+                    profileColumns.forEach((col, index) => {
+                        profile[col] = row[index];
+                    });
+                    return profile;
+                });
+                
+                // Join profiles to records
+                records.forEach(record => {
+                    const profile = profiles.find(p => p.user_id === record.id);
+                    if (profile) {
+                        record.age = profile.age;
+                        record.annual_income = profile.annual_income;
+                        record.employment_status = profile.employment_status;
+                        record.household_size = profile.household_size;
+                        record.has_preexisting_conditions = profile.has_preexisting_conditions;
+                        record.is_smoker = profile.is_smoker;
+                        record.region = profile.region;
+                    }
+                });
+            }
+        } catch (profileError) {
+            console.log('Could not fetch profiles:', profileError.message);
+        }
+        
         res.json({ records });
     } catch (error) {
         console.error('Error fetching records:', error);
-        res.status(500).json({ error: 'Failed to fetch records' });
+        res.status(500).json({ error: 'Failed to fetch records', details: error.message });
     }
 });
 
