@@ -90,6 +90,21 @@
             color: #276749;
         }
         
+        .category-badge.family {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .category-badge.spouse {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .category-badge.child {
+            background: #e2d5f1;
+            color: #5a3d7a;
+        }
+        
         .progress-bar {
             height: 8px;
             background: #e2e8f0;
@@ -106,7 +121,8 @@
         
         input[type="number"],
         input[type="text"],
-        input[type="email"] {
+        input[type="email"],
+        input[type="date"] {
             width: 100%;
             padding: 12px;
             font-size: 1.1em;
@@ -431,6 +447,24 @@
         .privacy-note strong {
             color: #4a5568;
         }
+        
+        .family-summary {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            border-radius: 0 8px 8px 0;
+            margin-bottom: 20px;
+        }
+        
+        .family-summary h4 {
+            margin: 0 0 10px 0;
+            color: #856404;
+        }
+        
+        .family-summary ul {
+            margin: 0;
+            padding-left: 20px;
+        }
     </style>
 </head>
 <body>
@@ -454,7 +488,6 @@
         </div>
         
         <div class="results-container" id="resultsContainer">
-            <!-- Results will be inserted here -->
         </div>
     </div>
     
@@ -474,26 +507,83 @@
             }
         }
         
+        function getAllQuestions() {
+            let allQuestions = questions.filter(q => {
+                if (q.conditional) {
+                    return answers[q.conditional.field] === q.conditional.value;
+                }
+                return true;
+            });
+            
+            const numChildren = answers.numberOfChildren || 0;
+            if (numChildren > 0) {
+                for (let i = 0; i < numChildren; i++) {
+                    allQuestions.push({
+                        id: `child${i}FirstName`,
+                        type: 'text',
+                        question: `What is child ${i + 1}'s first name?`,
+                        required: true,
+                        maxLength: 50,
+                        category: 'child'
+                    });
+                    allQuestions.push({
+                        id: `child${i}LastName`,
+                        type: 'text',
+                        question: `What is child ${i + 1}'s last name?`,
+                        required: true,
+                        maxLength: 50,
+                        category: 'child'
+                    });
+                    allQuestions.push({
+                        id: `child${i}DateOfBirth`,
+                        type: 'date',
+                        question: `What is child ${i + 1}'s date of birth?`,
+                        required: true,
+                        category: 'child'
+                    });
+                    allQuestions.push({
+                        id: `child${i}HasPreexistingConditions`,
+                        type: 'boolean',
+                        question: `Does child ${i + 1} have any pre-existing health conditions?`,
+                        required: true,
+                        category: 'child'
+                    });
+                }
+            }
+            
+            return allQuestions;
+        }
+        
         function updateProgress() {
-            const progress = ((currentQuestion) / questions.length) * 100;
+            const allQuestions = getAllQuestions();
+            const progress = ((currentQuestion) / allQuestions.length) * 100;
             document.getElementById('progressFill').style.width = `${progress}%`;
         }
         
         function renderQuestion() {
-            if (currentQuestion >= questions.length) {
+            const allQuestions = getAllQuestions();
+            
+            if (currentQuestion >= allQuestions.length) {
                 submitAnswers();
                 return;
             }
             
-            const q = questions[currentQuestion];
+            const q = allQuestions[currentQuestion];
             updateProgress();
             
             let inputHtml = '';
             let categoryBadge = '';
             
-            // Show category badge
             if (q.category) {
-                const categoryLabel = q.category === 'registration' ? 'Registration' : 'Your Details';
+                let categoryLabel = '';
+                switch (q.category) {
+                    case 'registration': categoryLabel = 'Registration'; break;
+                    case 'profile': categoryLabel = 'Your Details'; break;
+                    case 'family': categoryLabel = 'Family'; break;
+                    case 'spouse': categoryLabel = 'Spouse/Partner'; break;
+                    case 'child': categoryLabel = 'Child Details'; break;
+                    default: categoryLabel = q.category;
+                }
                 categoryBadge = `<span class="category-badge ${q.category}">${categoryLabel}</span>`;
             }
             
@@ -503,8 +593,8 @@
                     inputHtml = `
                         <div class="${isCurrency ? 'currency-prefix' : ''}">
                             <input type="number" id="answer" 
-                                min="${q.min || ''}" 
-                                max="${q.max || ''}" 
+                                min="${q.min !== undefined ? q.min : ''}" 
+                                max="${q.max !== undefined ? q.max : ''}" 
                                 placeholder="${q.placeholder || (isCurrency ? 'Enter amount' : 'Enter a number')}"
                                 value="${answers[q.id] !== undefined ? answers[q.id] : ''}"
                                 step="${isCurrency ? '0.01' : '1'}">
@@ -534,6 +624,15 @@
                     `;
                     break;
                     
+                case 'date':
+                    inputHtml = `
+                        <input type="date" id="answer" 
+                            value="${answers[q.id] || ''}"
+                            max="${new Date().toISOString().split('T')[0]}">
+                        <p class="field-hint">Enter date of birth</p>
+                    `;
+                    break;
+                    
                 case 'choice':
                     inputHtml = '<div class="options-container">';
                     q.options.forEach(option => {
@@ -560,7 +659,6 @@
                     break;
             }
             
-            // Show privacy note for registration fields
             let privacyNote = '';
             if (q.category === 'registration' && currentQuestion === 0) {
                 privacyNote = `
@@ -571,8 +669,7 @@
                 `;
             }
             
-            // Only show Next button for number, text, and email inputs
-            const showNextButton = q.type === 'number' || q.type === 'text' || q.type === 'email';
+            const showNextButton = q.type === 'number' || q.type === 'text' || q.type === 'email' || q.type === 'date';
             
             const html = `
                 <div class="question-card active">
@@ -588,7 +685,7 @@
                         </button>
                         ${showNextButton ? `
                             <button class="btn btn-primary" onclick="nextQuestion()">
-                                ${currentQuestion === questions.length - 1 ? 'Get Quotes' : 'Next →'}
+                                ${currentQuestion === getAllQuestions().length - 1 ? 'Get Quotes' : 'Next →'}
                             </button>
                         ` : ''}
                     </div>
@@ -607,21 +704,24 @@
         }
         
         function selectOptionAndAdvance(option) {
-            const q = questions[currentQuestion];
+            const allQuestions = getAllQuestions();
+            const q = allQuestions[currentQuestion];
             answers[q.id] = option;
             currentQuestion++;
             renderQuestion();
         }
         
         function selectBooleanAndAdvance(value) {
-            const q = questions[currentQuestion];
+            const allQuestions = getAllQuestions();
+            const q = allQuestions[currentQuestion];
             answers[q.id] = value;
             currentQuestion++;
             renderQuestion();
         }
         
         function validateCurrentAnswer() {
-            const q = questions[currentQuestion];
+            const allQuestions = getAllQuestions();
+            const q = allQuestions[currentQuestion];
             
             if (q.type === 'number') {
                 const input = document.getElementById('answer');
@@ -638,6 +738,10 @@
                     return { valid: false, message: `Value must be at most ${q.max}` };
                 }
                 
+                if (q.id === 'age' || q.id === 'numberOfChildren') {
+                    return { valid: true, value: Math.floor(value) };
+                }
+                
                 return { valid: true, value: value };
             } else if (q.type === 'text') {
                 const input = document.getElementById('answer');
@@ -647,7 +751,6 @@
                     return { valid: false, message: 'Please enter a value' };
                 }
                 
-                // Postcode validation
                 if (q.id === 'postcode' && value) {
                     const postcodeRegex = /^([A-Z]{1,2}[0-9][A-Z0-9]? ?[0-9][A-Z]{2}|GIR ?0AA)$/i;
                     if (!postcodeRegex.test(value)) {
@@ -655,8 +758,7 @@
                     }
                 }
                 
-                // Name validation
-                if ((q.id === 'firstName' || q.id === 'lastName') && value) {
+                if ((q.id.includes('FirstName') || q.id.includes('LastName')) && value) {
                     if (!/^[a-zA-Z\s\-']+$/.test(value)) {
                         return { valid: false, message: 'Name contains invalid characters' };
                     }
@@ -677,6 +779,24 @@
                 }
                 
                 return { valid: true, value: value };
+            } else if (q.type === 'date') {
+                const input = document.getElementById('answer');
+                const value = input.value;
+                
+                if (q.required && !value) {
+                    return { valid: false, message: 'Please enter a date' };
+                }
+                
+                const date = new Date(value);
+                if (isNaN(date.getTime())) {
+                    return { valid: false, message: 'Please enter a valid date' };
+                }
+                
+                if (date > new Date()) {
+                    return { valid: false, message: 'Date cannot be in the future' };
+                }
+                
+                return { valid: true, value: value };
             } else if (q.required && answers[q.id] === undefined) {
                 return { valid: false, message: 'Please select an option' };
             }
@@ -693,7 +813,8 @@
             }
             
             if (validation.value !== undefined) {
-                const q = questions[currentQuestion];
+                const allQuestions = getAllQuestions();
+                const q = allQuestions[currentQuestion];
                 answers[q.id] = validation.value;
             }
             
@@ -726,7 +847,7 @@
                 const data = await response.json();
                 
                 if (response.ok) {
-                    displayResults(data.result, data.profileId, data.user);
+                    displayResults(data.result, data.profileId, data.user, data.familyMembers);
                 } else {
                     if (data.details && Array.isArray(data.details)) {
                         displayValidationErrors(data.details);
@@ -768,13 +889,12 @@
             renderQuestion();
         }
         
-        function displayResults(result, profileId, user) {
+        function displayResults(result, profileId, user, familyMembers) {
             document.getElementById('questionsContainer').style.display = 'none';
             document.querySelector('.progress-bar').style.display = 'none';
             
             let html = '';
             
-            // Welcome message with user's name
             if (user && user.firstName) {
                 html += `
                     <div class="welcome-message">
@@ -786,7 +906,6 @@
             
             html += '<h2>Your Private Health Insurance Options</h2>';
             
-            // Profile ID reference
             if (profileId) {
                 html += `
                     <div class="profile-id">
@@ -796,7 +915,19 @@
                 `;
             }
             
-            // Budget recommendation
+            if (familyMembers && familyMembers.length > 0) {
+                html += `
+                    <div class="family-summary">
+                        <h4>👨‍👩‍👧‍👦 Family Members Included</h4>
+                        <ul>
+                            ${familyMembers.map(fm => `
+                                <li><strong>${fm.firstName}</strong> (${fm.relationship}, age ${fm.age})</li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                `;
+            }
+            
             html += `
                 <div class="budget-info">
                     <p>Based on your income, we recommend a monthly budget of around</p>
@@ -804,7 +935,6 @@
                 </div>
             `;
             
-            // Pre-existing conditions warning
             if (result.hasPreexistingConditionRestrictions) {
                 html += `
                     <div class="result-section warning">
@@ -817,7 +947,6 @@
                 `;
             }
             
-            // Personalised recommendation
             if (result.recommendation) {
                 html += `
                     <div class="result-section recommendation">
@@ -827,7 +956,6 @@
                 `;
             }
             
-            // Available plans
             if (result.eligiblePlans && result.eligiblePlans.length > 0) {
                 html += '<h3>Available Plans</h3>';
                 
@@ -880,7 +1008,6 @@
             resultsContainer.classList.add('active');
         }
         
-        // Initialize
         loadQuestions();
     </script>
 </body>
