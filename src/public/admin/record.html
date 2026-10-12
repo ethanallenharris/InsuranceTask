@@ -81,6 +81,7 @@
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
             overflow: hidden;
+            margin-bottom: 1.5rem;
         }
 
         .record-header {
@@ -384,6 +385,65 @@
             color: #333;
         }
 
+        .family-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            margin-bottom: 1.5rem;
+        }
+
+        .family-card-header {
+            background-color: #f0e7ff;
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #e0d7ef;
+        }
+
+        .family-card-header.spouse {
+            background-color: #f0e7ff;
+        }
+
+        .family-card-header.children {
+            background-color: #e7fff0;
+        }
+
+        .family-card-header h3 {
+            color: #333;
+            font-size: 1rem;
+            margin: 0;
+        }
+
+        .family-card-body {
+            padding: 1.5rem;
+        }
+
+        .family-member {
+            padding: 1rem;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            margin-bottom: 0.75rem;
+        }
+
+        .family-member:last-child {
+            margin-bottom: 0;
+        }
+
+        .family-member-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+
+        .family-member-details {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .no-family {
+            color: #666;
+            font-style: italic;
+        }
+
         @media (max-width: 600px) {
             .info-grid {
                 grid-template-columns: 1fr;
@@ -421,6 +481,8 @@
         <div class="record-card" id="recordCard">
             <div class="loading-message" id="loadingMessage">Loading record...</div>
         </div>
+
+        <div id="familySection"></div>
     </main>
 
     <script>
@@ -451,6 +513,7 @@
 
         // DOM elements
         const recordCard = document.getElementById('recordCard');
+        const familySection = document.getElementById('familySection');
         const loadingMessage = document.getElementById('loadingMessage');
         const successMessage = document.getElementById('successMessage');
 
@@ -471,6 +534,7 @@
                 currentRecord = data.record;
                 selectedStatus = currentRecord.status;
                 renderRecord(currentRecord);
+                renderFamilySection(currentRecord);
             } catch (error) {
                 console.error('Error fetching record:', error);
                 recordCard.innerHTML = '<div class="error-message">Failed to load record. Please try again.</div>';
@@ -522,6 +586,7 @@
                             <div class="info-item">
                                 <label class="info-label" for="region">Region</label>
                                 <select id="region" class="form-select">
+                                    <option value="">Select region</option>
                                     ${regionOptionsHtml}
                                 </select>
                             </div>
@@ -537,6 +602,7 @@
                             <div class="info-item">
                                 <label class="info-label" for="employmentStatus">Employment Status</label>
                                 <select id="employmentStatus" class="form-select">
+                                    <option value="">Select status</option>
                                     ${employmentOptionsHtml}
                                 </select>
                             </div>
@@ -620,6 +686,68 @@
             // Update title when name changes
             document.getElementById('firstName').addEventListener('input', updateTitle);
             document.getElementById('lastName').addEventListener('input', updateTitle);
+        }
+
+        // Render family section
+        function renderFamilySection(record) {
+            let html = '';
+
+            // Spouse section
+            if (record.spouse) {
+                html += `
+                    <div class="family-card">
+                        <div class="family-card-header spouse">
+                            <h3>Spouse</h3>
+                        </div>
+                        <div class="family-card-body">
+                            <div class="family-member">
+                                <div class="family-member-name">${escapeHtml(record.spouse.firstName || '')} ${escapeHtml(record.spouse.lastName || '')}</div>
+                                <div class="family-member-details">
+                                    Date of Birth: ${record.spouse.dateOfBirth || '-'}<br>
+                                    Pre-existing Conditions: ${record.spouse.hasPreexistingConditions ? 'Yes' : 'No'}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Children section
+            if (record.children && record.children.length > 0) {
+                html += `
+                    <div class="family-card">
+                        <div class="family-card-header children">
+                            <h3>Children (${record.children.length})</h3>
+                        </div>
+                        <div class="family-card-body">
+                            ${record.children.map(child => `
+                                <div class="family-member">
+                                    <div class="family-member-name">${escapeHtml(child.firstName || '')} ${escapeHtml(child.lastName || '')}</div>
+                                    <div class="family-member-details">
+                                        Date of Birth: ${child.dateOfBirth || '-'}<br>
+                                        Pre-existing Conditions: ${child.hasPreexistingConditions ? 'Yes' : 'No'}
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            if (!record.spouse && (!record.children || record.children.length === 0)) {
+                html = `
+                    <div class="family-card">
+                        <div class="family-card-header">
+                            <h3>Family Members</h3>
+                        </div>
+                        <div class="family-card-body">
+                            <p class="no-family">No family members attached to this record.</p>
+                        </div>
+                    </div>
+                `;
+            }
+
+            familySection.innerHTML = html;
         }
 
         // Update the record title when name changes

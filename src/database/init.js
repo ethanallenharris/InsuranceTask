@@ -55,6 +55,21 @@ async function initializeDatabase() {
     `);
 
     db.run(`
+        CREATE TABLE IF NOT EXISTS family_members (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            relationship TEXT NOT NULL CHECK(relationship IN ('spouse', 'child')),
+            first_name TEXT NOT NULL,
+            last_name TEXT NOT NULL,
+            date_of_birth TEXT,
+            has_preexisting_conditions INTEGER NOT NULL DEFAULT 0 CHECK(has_preexisting_conditions IN (0, 1)),
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    `);
+
+    db.run(`
         CREATE TABLE IF NOT EXISTS eligibility_results (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             profile_id INTEGER NOT NULL UNIQUE,
@@ -107,6 +122,8 @@ async function initializeDatabase() {
     db.run('CREATE INDEX IF NOT EXISTS idx_profiles_region ON user_profiles(region)');
     db.run('CREATE INDEX IF NOT EXISTS idx_profiles_age ON user_profiles(age)');
     db.run('CREATE INDEX IF NOT EXISTS idx_results_profile ON eligibility_results(profile_id)');
+    db.run('CREATE INDEX IF NOT EXISTS idx_family_user ON family_members(user_id)');
+    db.run('CREATE INDEX IF NOT EXISTS idx_family_relationship ON family_members(relationship)');
 
     // Save to file
     const data = db.export();

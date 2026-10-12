@@ -1,206 +1,10 @@
 const express = require('express');
 const path = require('path');
 const router = express.Router();
+const { decrypt } = require('../utils/encryption');
 
 // Audit log storage
 let auditLog = [];
-
-// Dummy data for testing - kept separate from main database
-// Using let so we can modify the records
-let dummyRecords = [
-    { 
-        id: 1,
-        firstName: 'James', 
-        lastName: 'Smith', 
-        email: 'james.smith@email.com', 
-        postcode: 'SW1A 1AA', 
-        status: 'accepted',
-        age: 32, 
-        annualIncome: 45000, 
-        employmentStatus: 'Employed', 
-        householdSize: 2, 
-        hasPreexistingConditions: false, 
-        isSmoker: false, 
-        region: 'London',
-        createdAt: '2024-01-15T10:30:00Z'
-    },
-    { 
-        id: 2,
-        firstName: 'Emma', 
-        lastName: 'Johnson', 
-        email: 'emma.johnson@email.com', 
-        postcode: 'M1 1AE', 
-        status: 'accepted',
-        age: 28, 
-        annualIncome: 52000, 
-        employmentStatus: 'Employed', 
-        householdSize: 1, 
-        hasPreexistingConditions: false, 
-        isSmoker: false, 
-        region: 'North West',
-        createdAt: '2024-01-14T14:20:00Z'
-    },
-    { 
-        id: 3,
-        firstName: 'Oliver', 
-        lastName: 'Williams', 
-        email: 'oliver.williams@email.com', 
-        postcode: 'B1 1AA', 
-        status: 'accepted',
-        age: 45, 
-        annualIncome: 68000, 
-        employmentStatus: 'Self-employed', 
-        householdSize: 4, 
-        hasPreexistingConditions: false, 
-        isSmoker: false, 
-        region: 'West Midlands',
-        createdAt: '2024-01-13T09:15:00Z'
-    },
-    { 
-        id: 4,
-        firstName: 'Sophia', 
-        lastName: 'Brown', 
-        email: 'sophia.brown@email.com', 
-        postcode: 'L1 1AA', 
-        status: 'accepted',
-        age: 35, 
-        annualIncome: 41000, 
-        employmentStatus: 'Employed', 
-        householdSize: 3, 
-        hasPreexistingConditions: false, 
-        isSmoker: false, 
-        region: 'North West',
-        createdAt: '2024-01-12T16:45:00Z'
-    },
-    { 
-        id: 5,
-        firstName: 'William', 
-        lastName: 'Jones', 
-        email: 'william.jones@email.com', 
-        postcode: 'E1 6AN', 
-        status: 'referred',
-        age: 55, 
-        annualIncome: 38000, 
-        employmentStatus: 'Employed', 
-        householdSize: 2, 
-        hasPreexistingConditions: true, 
-        isSmoker: false, 
-        region: 'London',
-        createdAt: '2024-01-11T11:00:00Z'
-    },
-    { 
-        id: 6,
-        firstName: 'Isabella', 
-        lastName: 'Taylor', 
-        email: 'isabella.taylor@email.com', 
-        postcode: 'G1 1AA', 
-        status: 'referred',
-        age: 62, 
-        annualIncome: 29000, 
-        employmentStatus: 'Retired', 
-        householdSize: 1, 
-        hasPreexistingConditions: true, 
-        isSmoker: false, 
-        region: 'Scotland',
-        createdAt: '2024-01-10T13:30:00Z'
-    },
-    { 
-        id: 7,
-        firstName: 'Henry', 
-        lastName: 'Davies', 
-        email: 'henry.davies@email.com', 
-        postcode: 'CF10 1AA', 
-        status: 'referred',
-        age: 41, 
-        annualIncome: 55000, 
-        employmentStatus: 'Employed', 
-        householdSize: 3, 
-        hasPreexistingConditions: false, 
-        isSmoker: true, 
-        region: 'Wales',
-        createdAt: '2024-01-09T08:45:00Z'
-    },
-    { 
-        id: 8,
-        firstName: 'Mia', 
-        lastName: 'Wilson', 
-        email: 'mia.wilson@email.com', 
-        postcode: 'EH1 1AA', 
-        status: 'referred',
-        age: 38, 
-        annualIncome: 47000, 
-        employmentStatus: 'Self-employed', 
-        householdSize: 2, 
-        hasPreexistingConditions: true, 
-        isSmoker: false, 
-        region: 'Scotland',
-        createdAt: '2024-01-08T15:20:00Z'
-    },
-    { 
-        id: 9,
-        firstName: 'George', 
-        lastName: 'Evans', 
-        email: 'george.evans@email.com', 
-        postcode: 'LS1 1AA', 
-        status: 'rejected',
-        age: 67, 
-        annualIncome: 22000, 
-        employmentStatus: 'Retired', 
-        householdSize: 1, 
-        hasPreexistingConditions: true, 
-        isSmoker: true, 
-        region: 'Yorkshire and the Humber',
-        createdAt: '2024-01-07T10:10:00Z'
-    },
-    { 
-        id: 10,
-        firstName: 'Charlotte', 
-        lastName: 'Thomas', 
-        email: 'charlotte.thomas@email.com', 
-        postcode: 'NE1 1AA', 
-        status: 'rejected',
-        age: 29, 
-        annualIncome: 18000, 
-        employmentStatus: 'Unemployed', 
-        householdSize: 1, 
-        hasPreexistingConditions: false, 
-        isSmoker: true, 
-        region: 'North East',
-        createdAt: '2024-01-06T12:00:00Z'
-    },
-    { 
-        id: 11,
-        firstName: 'Jack', 
-        lastName: 'Roberts', 
-        email: 'jack.roberts@email.com', 
-        postcode: 'BS1 1AA', 
-        status: 'rejected',
-        age: 71, 
-        annualIncome: 19000, 
-        employmentStatus: 'Retired', 
-        householdSize: 2, 
-        hasPreexistingConditions: true, 
-        isSmoker: false, 
-        region: 'South West',
-        createdAt: '2024-01-05T09:30:00Z'
-    },
-    { 
-        id: 12,
-        firstName: 'Amelia', 
-        lastName: 'Walker', 
-        email: 'amelia.walker@email.com', 
-        postcode: 'NG1 1AA', 
-        status: 'rejected',
-        age: 24, 
-        annualIncome: 21000, 
-        employmentStatus: 'Employed', 
-        householdSize: 1, 
-        hasPreexistingConditions: false, 
-        isSmoker: true, 
-        region: 'East Midlands',
-        createdAt: '2024-01-04T14:15:00Z'
-    }
-];
 
 // Valid options
 const VALID_STATUSES = ['accepted', 'rejected', 'referred'];
@@ -223,6 +27,223 @@ function addAuditLogEntry(adminEmail, recordId, action, changes) {
     });
 }
 
+// Helper function to get records from database
+function getRecordsFromDatabase() {
+    const { getConnection } = require('../database/connection');
+    const db = getConnection();
+    
+    // Get all users
+    const usersResult = db.exec(`
+        SELECT id, first_name_encrypted, last_name_encrypted, email_encrypted, 
+               postcode_encrypted, status, created_at, updated_at
+        FROM users
+        ORDER BY created_at DESC
+    `);
+    
+    if (usersResult.length === 0) {
+        return [];
+    }
+    
+    const userColumns = usersResult[0].columns;
+    const users = usersResult[0].values.map(row => {
+        const user = {};
+        userColumns.forEach((col, index) => {
+            user[col] = row[index];
+        });
+        return user;
+    });
+    
+    // Get all profiles
+    const profilesResult = db.exec(`
+        SELECT user_id, age, annual_income, employment_status, household_size,
+               has_preexisting_conditions, is_smoker, region
+        FROM user_profiles
+    `);
+    
+    const profiles = {};
+    if (profilesResult.length > 0) {
+        const profileColumns = profilesResult[0].columns;
+        profilesResult[0].values.forEach(row => {
+            const profile = {};
+            profileColumns.forEach((col, index) => {
+                profile[col] = row[index];
+            });
+            profiles[profile.user_id] = profile;
+        });
+    }
+    
+    // Get all family members
+    const familyResult = db.exec(`
+        SELECT id, user_id, relationship, first_name, last_name, date_of_birth,
+               has_preexisting_conditions
+        FROM family_members
+        ORDER BY user_id, relationship, id
+    `);
+    
+    const familyMembers = {};
+    if (familyResult.length > 0) {
+        const familyColumns = familyResult[0].columns;
+        familyResult[0].values.forEach(row => {
+            const member = {};
+            familyColumns.forEach((col, index) => {
+                member[col] = row[index];
+            });
+            if (!familyMembers[member.user_id]) {
+                familyMembers[member.user_id] = [];
+            }
+            familyMembers[member.user_id].push(member);
+        });
+    }
+    
+    // Combine and decrypt data
+    const records = users.map(user => {
+        const profile = profiles[user.id] || {};
+        const family = familyMembers[user.id] || [];
+        
+        // Decrypt user fields
+        let firstName, lastName, email, postcode;
+        try {
+            firstName = decrypt(user.first_name_encrypted);
+            lastName = decrypt(user.last_name_encrypted);
+            email = decrypt(user.email_encrypted);
+            postcode = decrypt(user.postcode_encrypted);
+        } catch (err) {
+            console.error('Error decrypting user data for id:', user.id, err);
+            firstName = '[Decryption Error]';
+            lastName = '';
+            email = '';
+            postcode = '';
+        }
+        
+        // Process family members
+        const spouse = family.find(m => m.relationship === 'spouse');
+        const children = family.filter(m => m.relationship === 'child');
+        
+        return {
+            id: user.id,
+            firstName: firstName,
+            lastName: lastName,
+            email: email,
+            postcode: postcode,
+            status: user.status,
+            age: profile.age || null,
+            annualIncome: profile.annual_income || null,
+            employmentStatus: profile.employment_status || null,
+            householdSize: profile.household_size || null,
+            hasPreexistingConditions: profile.has_preexisting_conditions === 1,
+            isSmoker: profile.is_smoker === 1,
+            region: profile.region || null,
+            createdAt: user.created_at,
+            updatedAt: user.updated_at,
+            spouse: spouse ? {
+                id: spouse.id,
+                firstName: spouse.first_name,
+                lastName: spouse.last_name,
+                dateOfBirth: spouse.date_of_birth,
+                hasPreexistingConditions: spouse.has_preexisting_conditions === 1
+            } : null,
+            children: children.map(child => ({
+                id: child.id,
+                firstName: child.first_name,
+                lastName: child.last_name,
+                dateOfBirth: child.date_of_birth,
+                hasPreexistingConditions: child.has_preexisting_conditions === 1
+            }))
+        };
+    });
+    
+    return records;
+}
+
+// Helper function to get a single record from database
+function getRecordFromDatabase(id) {
+    const records = getRecordsFromDatabase();
+    return records.find(r => r.id === id) || null;
+}
+
+// Helper function to update record in database
+function updateRecordInDatabase(id, updates) {
+    const { getConnection, saveDatabase } = require('../database/connection');
+    const { encrypt, hashEmail } = require('../utils/encryption');
+    const db = getConnection();
+    
+    // Update users table
+    const userUpdates = [];
+    const userParams = [];
+    
+    if (updates.firstName !== undefined) {
+        userUpdates.push('first_name_encrypted = ?');
+        userParams.push(encrypt(updates.firstName));
+    }
+    if (updates.lastName !== undefined) {
+        userUpdates.push('last_name_encrypted = ?');
+        userParams.push(encrypt(updates.lastName));
+    }
+    if (updates.email !== undefined) {
+        userUpdates.push('email_encrypted = ?');
+        userParams.push(encrypt(updates.email));
+        userUpdates.push('email_hash = ?');
+        userParams.push(hashEmail(updates.email));
+    }
+    if (updates.postcode !== undefined) {
+        userUpdates.push('postcode_encrypted = ?');
+        userParams.push(encrypt(updates.postcode));
+    }
+    if (updates.status !== undefined) {
+        userUpdates.push('status = ?');
+        userParams.push(updates.status);
+    }
+    
+    if (userUpdates.length > 0) {
+        userUpdates.push('updated_at = CURRENT_TIMESTAMP');
+        userParams.push(id);
+        db.run(`UPDATE users SET ${userUpdates.join(', ')} WHERE id = ?`, userParams);
+    }
+    
+    // Update user_profiles table
+    const profileUpdates = [];
+    const profileParams = [];
+    
+    if (updates.age !== undefined) {
+        profileUpdates.push('age = ?');
+        profileParams.push(updates.age);
+    }
+    if (updates.annualIncome !== undefined) {
+        profileUpdates.push('annual_income = ?');
+        profileParams.push(updates.annualIncome);
+    }
+    if (updates.employmentStatus !== undefined) {
+        profileUpdates.push('employment_status = ?');
+        profileParams.push(updates.employmentStatus);
+    }
+    if (updates.householdSize !== undefined) {
+        profileUpdates.push('household_size = ?');
+        profileParams.push(updates.householdSize);
+    }
+    if (updates.hasPreexistingConditions !== undefined) {
+        profileUpdates.push('has_preexisting_conditions = ?');
+        profileParams.push(updates.hasPreexistingConditions ? 1 : 0);
+    }
+    if (updates.isSmoker !== undefined) {
+        profileUpdates.push('is_smoker = ?');
+        profileParams.push(updates.isSmoker ? 1 : 0);
+    }
+    if (updates.region !== undefined) {
+        profileUpdates.push('region = ?');
+        profileParams.push(updates.region);
+    }
+    
+    if (profileUpdates.length > 0) {
+        profileUpdates.push('updated_at = CURRENT_TIMESTAMP');
+        profileParams.push(id);
+        db.run(`UPDATE user_profiles SET ${profileUpdates.join(', ')} WHERE user_id = ?`, profileParams);
+    }
+    
+    saveDatabase();
+    
+    return getRecordFromDatabase(id);
+}
+
 // Serve admin login page
 router.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '../public/admin/login.html'));
@@ -241,7 +262,8 @@ router.get('/record', (req, res) => {
 // API endpoint to get all submitted records
 router.get('/api/records', (req, res) => {
     try {
-        res.json({ records: dummyRecords });
+        const records = getRecordsFromDatabase();
+        res.json({ records });
     } catch (error) {
         console.error('Error fetching records:', error);
         res.status(500).json({ error: 'Failed to fetch records', details: error.message });
@@ -252,7 +274,7 @@ router.get('/api/records', (req, res) => {
 router.get('/api/records/:id', (req, res) => {
     try {
         const id = parseInt(req.params.id);
-        const record = dummyRecords.find(r => r.id === id);
+        const record = getRecordFromDatabase(id);
         
         if (!record) {
             return res.status(404).json({ error: 'Record not found' });
@@ -272,10 +294,9 @@ router.put('/api/records/:id', (req, res) => {
         const updates = req.body;
         const adminEmail = req.headers['x-admin-email'] || 'unknown';
         
-        // Find the record
-        const recordIndex = dummyRecords.findIndex(r => r.id === id);
-        
-        if (recordIndex === -1) {
+        // Check if record exists
+        const existingRecord = getRecordFromDatabase(id);
+        if (!existingRecord) {
             return res.status(404).json({ error: 'Record not found' });
         }
         
@@ -345,17 +366,16 @@ router.put('/api/records/:id', (req, res) => {
         
         const changes = {};
         allowedFields.forEach(field => {
-            if (updates[field] !== undefined && updates[field] !== dummyRecords[recordIndex][field]) {
+            if (updates[field] !== undefined && updates[field] !== existingRecord[field]) {
                 changes[field] = {
-                    from: dummyRecords[recordIndex][field],
+                    from: existingRecord[field],
                     to: updates[field]
                 };
-                dummyRecords[recordIndex][field] = updates[field];
             }
         });
         
-        // Update timestamp
-        dummyRecords[recordIndex].updatedAt = new Date().toISOString();
+        // Update the record in database
+        const updatedRecord = updateRecordInDatabase(id, updates);
         
         // Add audit log entry if there were changes
         if (Object.keys(changes).length > 0) {
@@ -364,7 +384,7 @@ router.put('/api/records/:id', (req, res) => {
         
         res.json({ 
             success: true, 
-            record: dummyRecords[recordIndex] 
+            record: updatedRecord 
         });
     } catch (error) {
         console.error('Error updating record:', error);
