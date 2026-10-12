@@ -38,11 +38,16 @@ const VALID_REGIONS = [
     'North West', 'North East', 'Scotland', 'Wales', 'Northern Ireland'
 ];
 
+const VALID_RELATIONSHIPS = ['spouse', 'child'];
+
 // UK postcode regex pattern
 const UK_POSTCODE_REGEX = /^([A-Z]{1,2}[0-9][A-Z0-9]? ?[0-9][A-Z]{2}|GIR ?0AA)$/i;
 
 // Email regex pattern
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Date regex pattern (YYYY-MM-DD)
+const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
  * Validate user registration data
@@ -183,6 +188,88 @@ function validateProfileData(data) {
 }
 
 /**
+ * Validate family member data
+ * @param {Object} data - Raw input data
+ * @param {number} index - Index of the family member (for error messages)
+ * @returns {ValidationResult}
+ */
+function validateFamilyMemberData(data, index = 0) {
+    const result = new ValidationResult();
+    const prefix = data.relationship === 'spouse' ? 'Spouse' : `Child ${index + 1}`;
+
+    // Relationship validation
+    if (!data.relationship || typeof data.relationship !== 'string') {
+        result.addError('relationship', `${prefix}: Relationship is required`);
+    } else if (!VALID_RELATIONSHIPS.includes(data.relationship)) {
+        result.addError('relationship', `${prefix}: Invalid relationship type`);
+    }
+
+    // First name validation
+    if (!data.firstName || typeof data.firstName !== 'string') {
+        result.addError('firstName', `${prefix}: First name is required`);
+    } else if (data.firstName.trim().length < 1) {
+        result.addError('firstName', `${prefix}: First name cannot be empty`);
+    } else if (data.firstName.trim().length > 50) {
+        result.addError('firstName', `${prefix}: First name must be less than 50 characters`);
+    } else if (!/^[a-zA-Z\s\-']+$/.test(data.firstName.trim())) {
+        result.addError('firstName', `${prefix}: First name contains invalid characters`);
+    }
+
+    // Last name validation
+    if (!data.lastName || typeof data.lastName !== 'string') {
+        result.addError('lastName', `${prefix}: Last name is required`);
+    } else if (data.lastName.trim().length < 1) {
+        result.addError('lastName', `${prefix}: Last name cannot be empty`);
+    } else if (data.lastName.trim().length > 50) {
+        result.addError('lastName', `${prefix}: Last name must be less than 50 characters`);
+    } else if (!/^[a-zA-Z\s\-']+$/.test(data.lastName.trim())) {
+        result.addError('lastName', `${prefix}: Last name contains invalid characters`);
+    }
+
+    // Date of birth validation
+    if (!data.dateOfBirth || typeof data.dateOfBirth !== 'string') {
+        result.addError('dateOfBirth', `${prefix}: Date of birth is required`);
+    } else if (!DATE_REGEX.test(data.dateOfBirth)) {
+        result.addError('dateOfBirth', `${prefix}: Date of birth must be in YYYY-MM-DD format`);
+    } else {
+        const dob = new Date(data.dateOfBirth);
+        const today = new Date();
+        
+        if (isNaN(dob.getTime())) {
+            result.addError('dateOfBirth', `${prefix}: Invalid date of birth`);
+        } else if (dob > today) {
+            result.addError('dateOfBirth', `${prefix}: Date of birth cannot be in the future`);
+        } else {
+            // Calculate age
+            let age = today.getFullYear() - dob.getFullYear();
+            const monthDiff = today.getMonth() - dob.getMonth();
+            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+                age--;
+            }
+            
+            // Spouse must be at least 18
+            if (data.relationship === 'spouse' && age < 18) {
+                result.addError('dateOfBirth', `${prefix}: Spouse must be at least 18 years old`);
+            }
+            
+            // Child must be under 26 for most insurance policies
+            if (data.relationship === 'child' && age >= 26) {
+                result.addError('dateOfBirth', `${prefix}: Children must be under 26 years old`);
+            }
+        }
+    }
+
+    // Pre-existing conditions validation (optional, defaults to false)
+    if (data.hasPreexistingConditions !== undefined && 
+        data.hasPreexistingConditions !== null && 
+        typeof data.hasPreexistingConditions !== 'boolean') {
+        result.addError('hasPreexistingConditions', `${prefix}: Invalid value for pre-existing conditions`);
+    }
+
+    return result;
+}
+
+/**
  * Sanitize string input to prevent injection
  * @param {string} input
  * @returns {string}
@@ -227,14 +314,32 @@ function sanitizeProfileData(data) {
     };
 }
 
+/**
+ * Sanitize family member data
+ * @param {Object} data
+ * @returns {Object}
+ */
+function sanitizeFamilyMemberData(data) {
+    return {
+        relationship: sanitizeString(data.relationship),
+        firstName: sanitizeString(data.firstName),
+        lastName: sanitizeString(data.lastName),
+        dateOfBirth: sanitizeString(data.dateOfBirth),
+        hasPreexistingConditions: Boolean(data.hasPreexistingConditions)
+    };
+}
+
 module.exports = {
     ValidationError,
     ValidationResult,
     validateUserData,
     validateProfileData,
+    validateFamilyMemberData,
     sanitizeString,
     sanitizeUserData,
     sanitizeProfileData,
+    sanitizeFamilyMemberData,
     VALID_EMPLOYMENT_STATUSES,
-    VALID_REGIONS
+    VALID_REGIONS,
+    VALID_RELATIONSHIPS
 };
