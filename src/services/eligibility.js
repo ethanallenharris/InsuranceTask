@@ -113,8 +113,6 @@ function generateRecommendation(profile) {
  * @returns {InsurancePlan[]}
  */
 function filterEligiblePlans(profile, plans) {
-    const budget = calculateRecommendedBudget(profile.annualIncome);
-    
     // Filter based on preferences
     let filteredPlans = plans;
     
@@ -220,10 +218,5 @@ function determineEligibility(profile) {
 
 module.exports = {
     getAvailablePlans,
-    calculateRecommendedBudget,
-    checkPreexistingConditionRestrictions,
-    generateRecommendation,
-    filterEligiblePlans,
-    applyAgePremiumAdjustment,
     determineEligibility
 };
