@@ -23,12 +23,16 @@ async function startServer() {
     // Initialize database connection
     await initDatabase();
     
-    // Check if database has the users table (schema migration check)
+    // Check if database has the required tables (schema migration check)
     const db = getConnection();
-    const tableCheck = db.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='users'");
+    const usersTableCheck = db.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='users'");
+    const familyTableCheck = db.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='family_members'");
     
-    if (tableCheck.length === 0 || tableCheck[0].values.length === 0) {
-        console.log('Database schema outdated, reinitializing...');
+    const needsReinit = (usersTableCheck.length === 0 || usersTableCheck[0].values.length === 0) ||
+                        (familyTableCheck.length === 0 || familyTableCheck[0].values.length === 0);
+    
+    if (needsReinit) {
+        console.log('Database schema outdated or missing tables, reinitializing...');
         closeConnection();
         
         // Delete old database
