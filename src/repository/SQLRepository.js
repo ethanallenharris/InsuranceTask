@@ -1,4 +1,4 @@
-const { getConnection } = require('../database/connection');
+const { getConnection, saveDatabase } = require('../database/connection');
 const UserProfile = require('../models/UserProfile');
 const EligibilityResult = require('../models/EligibilityResult');
 const InsurancePlan = require('../models/InsurancePlan');
@@ -26,7 +26,7 @@ class SQLRepository {
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
 
-        const result = stmt.run(
+        stmt.run([
             profile.age,
             profile.annualIncome,
             profile.employmentStatus,
@@ -38,10 +38,20 @@ class SQLRepository {
             profile.wantsPrivateDental ? 1 : 0,
             profile.wantsOutpatientCover ? 1 : 0,
             profile.wantsMentalHealthCover ? 1 : 0
-        );
+        ]);
 
-        profile.id = result.lastInsertRowid;
-        return result.lastInsertRowid;
+        stmt.free();
+
+        // Get the last inserted ID
+        const result = this.db.exec('SELECT last_insert_rowid() as id');
+        const profileId = result[0].values[0][0];
+        
+        profile.id = profileId;
+        
+        // Save to file
+        saveDatabase();
+        
+        return profileId;
     }
 
     /**
@@ -50,12 +60,16 @@ class SQLRepository {
      * @returns {UserProfile|null}
      */
     getProfile(profileId) {
-        const stmt = this.db.prepare(`
-            SELECT * FROM user_profiles WHERE id = ?
-        `);
+        const stmt = this.db.prepare('SELECT * FROM user_profiles WHERE id = ?');
+        stmt.bind([profileId]);
 
-        const row = stmt.get(profileId);
-        if (!row) return null;
+        if (!stmt.step()) {
+            stmt.free();
+            return null;
+        }
+
+        const row = stmt.getAsObject();
+        stmt.free();
 
         return new UserProfile({
             id: row.id,
@@ -79,6 +93,7 @@ class SQLRepository {
      * @param {EligibilityResult} result
      */
     saveResult(profileId, result) {
+        // Insert result
         const insertResult = this.db.prepare(`
             INSERT INTO eligibility_results (
                 profile_id, has_preexisting_condition_restrictions,
@@ -86,6 +101,19 @@ class SQLRepository {
             ) VALUES (?, ?, ?, ?)
         `);
 
+        insertResult.run([
+            profileId,
+            result.hasPreexistingConditionRestrictions ? 1 : 0,
+            result.recommendation,
+            result.estimatedMonthlyBudget
+        ]);
+        insertResult.free();
+
+        // Get the result ID
+        const idResult = this.db.exec('SELECT last_insert_rowid() as id');
+        const resultId = idResult[0].values[0][0];
+
+        // Insert plans
         const insertPlan = this.db.prepare(`
             INSERT INTO result_plans (
                 result_id, plan_id, plan_name, plan_type,
@@ -93,31 +121,22 @@ class SQLRepository {
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `);
 
-        const transaction = this.db.transaction(() => {
-            const res = insertResult.run(
-                profileId,
-                result.hasPreexistingConditionRestrictions ? 1 : 0,
-                result.recommendation,
-                result.estimatedMonthlyBudget
-            );
+        for (const plan of result.eligiblePlans) {
+            insertPlan.run([
+                resultId,
+                plan.planId,
+                plan.name,
+                plan.planType,
+                plan.monthlyPremium,
+                plan.deductible,
+                plan.coverageLevel,
+                plan.description
+            ]);
+        }
+        insertPlan.free();
 
-            const resultId = res.lastInsertRowid;
-
-            for (const plan of result.eligiblePlans) {
-                insertPlan.run(
-                    resultId,
-                    plan.planId,
-                    plan.name,
-                    plan.planType,
-                    plan.monthlyPremium,
-                    plan.deductible,
-                    plan.coverageLevel,
-                    plan.description
-                );
-            }
-        });
-
-        transaction();
+        // Save to file
+        saveDatabase();
     }
 
     /**
@@ -126,30 +145,40 @@ class SQLRepository {
      * @returns {EligibilityResult|null}
      */
     getResult(profileId) {
-        const resultStmt = this.db.prepare(`
-            SELECT * FROM eligibility_results WHERE profile_id = ?
-        `);
+        // Get result
+        const resultStmt = this.db.prepare('SELECT * FROM eligibility_results WHERE profile_id = ?');
+        resultStmt.bind([profileId]);
 
-        const plansStmt = this.db.prepare(`
-            SELECT * FROM result_plans WHERE result_id = ?
-        `);
+        if (!resultStmt.step()) {
+            resultStmt.free();
+            return null;
+        }
 
-        const resultRow = resultStmt.get(profileId);
-        if (!resultRow) return null;
+        const resultRow = resultStmt.getAsObject();
+        resultStmt.free();
 
+        // Get profile
         const profile = this.getProfile(profileId);
         if (!profile) return null;
 
-        const planRows = plansStmt.all(resultRow.id);
-        const plans = planRows.map(row => new InsurancePlan({
-            planId: row.plan_id,
-            name: row.plan_name,
-            planType: row.plan_type,
-            monthlyPremium: row.monthly_premium,
-            deductible: row.deductible,
-            coverageLevel: row.coverage_level,
-            description: row.description
-        }));
+        // Get plans
+        const plansStmt = this.db.prepare('SELECT * FROM result_plans WHERE result_id = ?');
+        plansStmt.bind([resultRow.id]);
+
+        const plans = [];
+        while (plansStmt.step()) {
+            const planRow = plansStmt.getAsObject();
+            plans.push(new InsurancePlan({
+                planId: planRow.plan_id,
+                name: planRow.plan_name,
+                planType: planRow.plan_type,
+                monthlyPremium: planRow.monthly_premium,
+                deductible: planRow.deductible,
+                coverageLevel: planRow.coverage_level,
+                description: planRow.description
+            }));
+        }
+        plansStmt.free();
 
         return new EligibilityResult({
             userProfile: profile,
@@ -165,25 +194,34 @@ class SQLRepository {
      * @returns {UserProfile[]}
      */
     getAllProfiles() {
-        const stmt = this.db.prepare(`
-            SELECT * FROM user_profiles ORDER BY created_at DESC
-        `);
+        const results = this.db.exec('SELECT * FROM user_profiles ORDER BY created_at DESC');
+        
+        if (results.length === 0) return [];
 
-        const rows = stmt.all();
-        return rows.map(row => new UserProfile({
-            id: row.id,
-            age: row.age,
-            annualIncome: row.annual_income,
-            employmentStatus: row.employment_status,
-            householdSize: row.household_size,
-            hasPreexistingConditions: row.has_preexisting_conditions === 1,
-            isSmoker: row.is_smoker === 1,
-            region: row.region,
-            hasNhsDentist: row.has_nhs_dentist === null ? null : row.has_nhs_dentist === 1,
-            wantsPrivateDental: row.wants_private_dental === 1,
-            wantsOutpatientCover: row.wants_outpatient_cover === 1,
-            wantsMentalHealthCover: row.wants_mental_health_cover === 1
-        }));
+        const columns = results[0].columns;
+        const rows = results[0].values;
+
+        return rows.map(row => {
+            const obj = {};
+            columns.forEach((col, i) => {
+                obj[col] = row[i];
+            });
+
+            return new UserProfile({
+                id: obj.id,
+                age: obj.age,
+                annualIncome: obj.annual_income,
+                employmentStatus: obj.employment_status,
+                householdSize: obj.household_size,
+                hasPreexistingConditions: obj.has_preexisting_conditions === 1,
+                isSmoker: obj.is_smoker === 1,
+                region: obj.region,
+                hasNhsDentist: obj.has_nhs_dentist === null ? null : obj.has_nhs_dentist === 1,
+                wantsPrivateDental: obj.wants_private_dental === 1,
+                wantsOutpatientCover: obj.wants_outpatient_cover === 1,
+                wantsMentalHealthCover: obj.wants_mental_health_cover === 1
+            });
+        });
     }
 
     /**
@@ -192,10 +230,11 @@ class SQLRepository {
      * @returns {boolean}
      */
     isValidRegion(region) {
-        const stmt = this.db.prepare(`
-            SELECT 1 FROM valid_regions WHERE region = ?
-        `);
-        return stmt.get(region) !== undefined;
+        const stmt = this.db.prepare('SELECT 1 FROM valid_regions WHERE region = ?');
+        stmt.bind([region]);
+        const exists = stmt.step();
+        stmt.free();
+        return exists;
     }
 
     /**
@@ -203,10 +242,9 @@ class SQLRepository {
      * @returns {string[]}
      */
     getValidRegions() {
-        const stmt = this.db.prepare(`
-            SELECT region FROM valid_regions ORDER BY region
-        `);
-        return stmt.all().map(row => row.region);
+        const results = this.db.exec('SELECT region FROM valid_regions ORDER BY region');
+        if (results.length === 0) return [];
+        return results[0].values.map(row => row[0]);
     }
 }
 
