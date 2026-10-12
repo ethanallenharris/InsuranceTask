@@ -1,7 +1,6 @@
 const express = require('express');
 const path = require('path');
 const router = express.Router();
-const { decrypt } = require('../utils/encryption');
 
 // Audit log storage
 let auditLog = [];
@@ -27,132 +26,155 @@ function addAuditLogEntry(adminEmail, recordId, action, changes) {
     });
 }
 
+// Helper function to safely decrypt
+function safeDecrypt(encryptedText) {
+    if (!encryptedText) return '';
+    try {
+        const { decrypt } = require('../utils/encryption');
+        return decrypt(encryptedText);
+    } catch (err) {
+        console.error('Decryption error:', err.message);
+        return '[Decryption Error]';
+    }
+}
+
 // Helper function to get records from database
 function getRecordsFromDatabase() {
-    const { getConnection } = require('../database/connection');
-    const db = getConnection();
-    
-    // Get all users
-    const usersResult = db.exec(`
-        SELECT id, first_name_encrypted, last_name_encrypted, email_encrypted, 
-               postcode_encrypted, status, created_at, updated_at
-        FROM users
-        ORDER BY created_at DESC
-    `);
-    
-    if (usersResult.length === 0) {
-        return [];
-    }
-    
-    const userColumns = usersResult[0].columns;
-    const users = usersResult[0].values.map(row => {
-        const user = {};
-        userColumns.forEach((col, index) => {
-            user[col] = row[index];
-        });
-        return user;
-    });
-    
-    // Get all profiles
-    const profilesResult = db.exec(`
-        SELECT user_id, age, annual_income, employment_status, household_size,
-               has_preexisting_conditions, is_smoker, region
-        FROM user_profiles
-    `);
-    
-    const profiles = {};
-    if (profilesResult.length > 0) {
-        const profileColumns = profilesResult[0].columns;
-        profilesResult[0].values.forEach(row => {
-            const profile = {};
-            profileColumns.forEach((col, index) => {
-                profile[col] = row[index];
-            });
-            profiles[profile.user_id] = profile;
-        });
-    }
-    
-    // Get all family members
-    const familyResult = db.exec(`
-        SELECT id, user_id, relationship, first_name, last_name, date_of_birth,
-               has_preexisting_conditions
-        FROM family_members
-        ORDER BY user_id, relationship, id
-    `);
-    
-    const familyMembers = {};
-    if (familyResult.length > 0) {
-        const familyColumns = familyResult[0].columns;
-        familyResult[0].values.forEach(row => {
-            const member = {};
-            familyColumns.forEach((col, index) => {
-                member[col] = row[index];
-            });
-            if (!familyMembers[member.user_id]) {
-                familyMembers[member.user_id] = [];
-            }
-            familyMembers[member.user_id].push(member);
-        });
-    }
-    
-    // Combine and decrypt data
-    const records = users.map(user => {
-        const profile = profiles[user.id] || {};
-        const family = familyMembers[user.id] || [];
+    try {
+        const { getConnection } = require('../database/connection');
+        const db = getConnection();
         
-        // Decrypt user fields
-        let firstName, lastName, email, postcode;
-        try {
-            firstName = decrypt(user.first_name_encrypted);
-            lastName = decrypt(user.last_name_encrypted);
-            email = decrypt(user.email_encrypted);
-            postcode = decrypt(user.postcode_encrypted);
-        } catch (err) {
-            console.error('Error decrypting user data for id:', user.id, err);
-            firstName = '[Decryption Error]';
-            lastName = '';
-            email = '';
-            postcode = '';
+        // Check if users table exists
+        const tableCheck = db.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='users'");
+        if (tableCheck.length === 0 || tableCheck[0].values.length === 0) {
+            console.log('Users table does not exist yet');
+            return [];
         }
         
-        // Process family members
-        const spouse = family.find(m => m.relationship === 'spouse');
-        const children = family.filter(m => m.relationship === 'child');
+        // Get all users
+        const usersResult = db.exec(`
+            SELECT id, first_name_encrypted, last_name_encrypted, email_encrypted, 
+                   postcode_encrypted, status, created_at, updated_at
+            FROM users
+            ORDER BY created_at DESC
+        `);
         
-        return {
-            id: user.id,
-            firstName: firstName,
-            lastName: lastName,
-            email: email,
-            postcode: postcode,
-            status: user.status,
-            age: profile.age || null,
-            annualIncome: profile.annual_income || null,
-            employmentStatus: profile.employment_status || null,
-            householdSize: profile.household_size || null,
-            hasPreexistingConditions: profile.has_preexisting_conditions === 1,
-            isSmoker: profile.is_smoker === 1,
-            region: profile.region || null,
-            createdAt: user.created_at,
-            updatedAt: user.updated_at,
-            spouse: spouse ? {
-                id: spouse.id,
-                firstName: spouse.first_name,
-                lastName: spouse.last_name,
-                dateOfBirth: spouse.date_of_birth,
-                hasPreexistingConditions: spouse.has_preexisting_conditions === 1
-            } : null,
-            children: children.map(child => ({
-                id: child.id,
-                firstName: child.first_name,
-                lastName: child.last_name,
-                dateOfBirth: child.date_of_birth,
-                hasPreexistingConditions: child.has_preexisting_conditions === 1
-            }))
-        };
-    });
-    
-    return records;
+        if (usersResult.length === 0 || usersResult[0].values.length === 0) {
+            return [];
+        }
+        
+        const userColumns = usersResult[0].columns;
+        const users = usersResult[0].values.map(row => {
+            const user = {};
+            userColumns.forEach((col, index) => {
+                user[col] = row[index];
+            });
+            return user;
+        });
+        
+        // Get all profiles
+        let profiles = {};
+        try {
+            const profilesResult = db.exec(`
+                SELECT user_id, age, annual_income, employment_status, household_size,
+                       has_preexisting_conditions, is_smoker, region
+                FROM user_profiles
+            `);
+            
+            if (profilesResult.length > 0 && profilesResult[0].values.length > 0) {
+                const profileColumns = profilesResult[0].columns;
+                profilesResult[0].values.forEach(row => {
+                    const profile = {};
+                    profileColumns.forEach((col, index) => {
+                        profile[col] = row[index];
+                    });
+                    profiles[profile.user_id] = profile;
+                });
+            }
+        } catch (err) {
+            console.log('Could not fetch profiles:', err.message);
+        }
+        
+        // Get all family members
+        let familyMembers = {};
+        try {
+            const familyResult = db.exec(`
+                SELECT id, user_id, relationship, first_name, last_name, date_of_birth,
+                       has_preexisting_conditions
+                FROM family_members
+                ORDER BY user_id, relationship, id
+            `);
+            
+            if (familyResult.length > 0 && familyResult[0].values.length > 0) {
+                const familyColumns = familyResult[0].columns;
+                familyResult[0].values.forEach(row => {
+                    const member = {};
+                    familyColumns.forEach((col, index) => {
+                        member[col] = row[index];
+                    });
+                    if (!familyMembers[member.user_id]) {
+                        familyMembers[member.user_id] = [];
+                    }
+                    familyMembers[member.user_id].push(member);
+                });
+            }
+        } catch (err) {
+            console.log('Could not fetch family members:', err.message);
+        }
+        
+        // Combine and decrypt data
+        const records = users.map(user => {
+            const profile = profiles[user.id] || {};
+            const family = familyMembers[user.id] || [];
+            
+            // Decrypt user fields
+            const firstName = safeDecrypt(user.first_name_encrypted);
+            const lastName = safeDecrypt(user.last_name_encrypted);
+            const email = safeDecrypt(user.email_encrypted);
+            const postcode = safeDecrypt(user.postcode_encrypted);
+            
+            // Process family members
+            const spouse = family.find(m => m.relationship === 'spouse');
+            const children = family.filter(m => m.relationship === 'child');
+            
+            return {
+                id: user.id,
+                firstName: firstName,
+                lastName: lastName,
+                email: email,
+                postcode: postcode,
+                status: user.status,
+                age: profile.age || null,
+                annualIncome: profile.annual_income || null,
+                employmentStatus: profile.employment_status || null,
+                householdSize: profile.household_size || null,
+                hasPreexistingConditions: profile.has_preexisting_conditions === 1,
+                isSmoker: profile.is_smoker === 1,
+                region: profile.region || null,
+                createdAt: user.created_at,
+                updatedAt: user.updated_at,
+                spouse: spouse ? {
+                    id: spouse.id,
+                    firstName: spouse.first_name,
+                    lastName: spouse.last_name,
+                    dateOfBirth: spouse.date_of_birth,
+                    hasPreexistingConditions: spouse.has_preexisting_conditions === 1
+                } : null,
+                children: children.map(child => ({
+                    id: child.id,
+                    firstName: child.first_name,
+                    lastName: child.last_name,
+                    dateOfBirth: child.date_of_birth,
+                    hasPreexistingConditions: child.has_preexisting_conditions === 1
+                }))
+            };
+        });
+        
+        return records;
+    } catch (err) {
+        console.error('Error in getRecordsFromDatabase:', err);
+        return [];
+    }
 }
 
 // Helper function to get a single record from database
